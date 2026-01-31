@@ -13,7 +13,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", exact: "2.94.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", exact: "3.15.1"),
         // Pin VolteecShared to semver tag for release stability
-        .package(url: "https://github.com/Volteec/VolteecShared.git", from: "1.0.0"),
+        .package(url: "https://github.com/Volteec/VolteecShared.git", from: "1.0.1"),
     ],
     targets: [
         .executableTarget(

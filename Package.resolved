@@ -303,7 +303,8 @@
       "kind": "remoteSourceControl",
       "location": "https://github.com/Volteec/VolteecShared.git",
       "state": {
-        "revision": "16afdaa9f8d7ec2d7cee3810521ad5d5e489e1ae"
+        "revision": "16afdaa9f8d7ec2d7cee3810521ad5d5e489e1ae",
+        "version": "1.0.1"
       }
     },
     {
