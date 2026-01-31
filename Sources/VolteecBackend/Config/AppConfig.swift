@@ -5,25 +5,14 @@ struct AppConfig {
     /// SHA-256 hash of API token for authentication (nil if missing)
     let apiTokenHash: String?
 
-    /// APNs environment configuration
-    let apnsEnvironment: APNsEnvironment
-
-    enum APNsEnvironment: String {
-        case sandbox
-        case production
-    }
-
     /// Configuration error types
     enum ConfigError: Error, CustomStringConvertible {
         case missingAPIToken
-        case invalidAPNsEnvironment(String)
 
         var description: String {
             switch self {
             case .missingAPIToken:
                 return "API_TOKEN environment variable is required but not set"
-            case .invalidAPNsEnvironment(let value):
-                return "Invalid APNS_ENVIRONMENT value: '\(value)'. Must be 'sandbox' or 'production'"
             }
         }
     }
@@ -37,15 +26,8 @@ struct AppConfig {
         let apiToken = Environment.get("API_TOKEN")
         let apiTokenHash = apiToken.map { ConstantTime.sha256Hex($0) }
 
-        // Load APNs environment (defaults to sandbox)
-        let apnsEnvironmentString = Environment.get("APNS_ENVIRONMENT") ?? "sandbox"
-        guard let apnsEnvironment = APNsEnvironment(rawValue: apnsEnvironmentString.lowercased()) else {
-            throw ConfigError.invalidAPNsEnvironment(apnsEnvironmentString)
-        }
-
         return AppConfig(
-            apiTokenHash: apiTokenHash,
-            apnsEnvironment: apnsEnvironment
+            apiTokenHash: apiTokenHash
         )
     }
 }

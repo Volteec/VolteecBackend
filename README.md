@@ -9,7 +9,7 @@ Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical ba
 ## Status
 
 Current version: v1.0.0 (2026-01-31) — Swift 6.1 / Vapor 4.121.1.  
-Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration, APNs support (optional).  
+Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration.  
 Planned content: SNMP polling (deferred).
 
 ### Patch History
@@ -109,20 +109,13 @@ Note: API responses currently expose the minimal fields (battery/runtime/load/in
 - `DATABASE_NAME`
 - `DATABASE_TLS_MODE` (optional; `require` | `prefer` | `disable`)
 
-### APNs (optional)
-If `APNS_KEY_P8_PATH` is set, all other APNs variables are required:
-- `APNS_KEY_P8_PATH`
-- `APNS_TEAM_ID`
-- `APNS_KEY_ID`
-- `APNS_TOPIC`
-- `APNS_ENVIRONMENT` (`sandbox` | `production`)
-
 ### Relay (optional)
 If `RELAY_URL` is set, all other `RELAY_*` variables are required:
 - `RELAY_URL`
 - `RELAY_TENANT_ID`
 - `RELAY_TENANT_SECRET`
 - `RELAY_SERVER_ID`
+- `RELAY_ENVIRONMENT` (`sandbox` | `production`, optional)
 
 ### Backend versioning (optional)
 - `BACKEND_PROTOCOL_VERSION` (default: `1.1`)
@@ -143,6 +136,22 @@ Behavior:
 - UPS IDs are lowercased NUT names.
 - Offline after 3 consecutive failures; metrics are cleared (null).
 
+## Operations (Production)
+
+### Retention
+- Backend telemetry retention is controlled by the backend operator (self-hosted).
+- If you store UPS telemetry long-term, document your retention period in your own policy.
+
+### Backups
+- Use regular Postgres backups (daily recommended).
+- Store backups encrypted and off-host.
+- Test restore procedures periodically.
+
+### TLS + Firewall
+- TLS should be enforced at the reverse proxy or load balancer.
+- Restrict database access to the backend host only.
+- Expose only the backend HTTP port (default 8080) to trusted networks.
+
 ## Implemented Structure
 
 ```
@@ -152,7 +161,6 @@ Sources/VolteecBackend/
 ├── Models/
 ├── Migrations/
 ├── Services/
-│   ├── APNs/
 │   ├── Compatibility/
 │   ├── Events/
 │   ├── Metrics/

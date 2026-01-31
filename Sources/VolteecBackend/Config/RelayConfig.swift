@@ -8,6 +8,7 @@ struct RelayConfig {
     let tenantId: String
     let tenantSecret: String
     let serverId: String
+    let environment: String
 
     /// Configuration error types
     enum ConfigError: Error, CustomStringConvertible {
@@ -64,11 +65,14 @@ struct RelayConfig {
             return nil
         }
 
+        let environment = (Environment.get("RELAY_ENVIRONMENT") ?? "sandbox").lowercased()
+
         return RelayConfig(
             url: url,
             tenantId: tenantId,
             tenantSecret: tenantSecret,
-            serverId: serverId
+            serverId: serverId,
+            environment: environment
         )
     }
 

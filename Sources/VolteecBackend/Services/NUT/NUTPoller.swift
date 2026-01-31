@@ -151,7 +151,7 @@ actor NUTPoller {
                 let event = UPSEventBus.UPSEvent(type: .statusChange, ups: savedUPS)
                 await eventBus.publish(event)
 
-                // Send APNs push notification (fire-and-forget)
+                // Send relay push event (fire-and-forget)
                 await sendStatusChangePush(
                     upsId: upsId,
                     newStatus: mappedData.status,
@@ -400,7 +400,7 @@ actor NUTPoller {
                     let event = UPSEventBus.UPSEvent(type: .statusChange, ups: existing)
                     await eventBus.publish(event)
 
-                    // Send APNs push notification
+                    // Send relay push event
                     await sendStatusChangePush(
                         upsId: upsId,
                         newStatus: .ups_offline,
@@ -428,8 +428,7 @@ actor NUTPoller {
             return
         }
 
-        let appConfig = AppConfig.get(from: app)
-        let environment = appConfig?.apnsEnvironment.rawValue ?? "sandbox"
+        let environment = RelayConfig.get(from: app)?.environment ?? "sandbox"
         let timestamp = Int64(Date().timeIntervalSince1970)
 
         let eventType = hasLowBattery ? "battery_low" : "ups_status_change"

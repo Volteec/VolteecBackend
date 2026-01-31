@@ -2,7 +2,7 @@ import Fluent
 
 struct CreateDevice: AsyncMigration {
     func prepare(on database: any Database) async throws {
-        let environmentEnum = try await database.enum("apns_environment")
+        let environmentEnum = try await database.enum("push_environment")
             .case("sandbox")
             .case("production")
             .create()
@@ -19,6 +19,6 @@ struct CreateDevice: AsyncMigration {
 
     func revert(on database: any Database) async throws {
         try await database.schema("devices").delete()
-        try await database.enum("apns_environment").delete()
+        try await database.enum("push_environment").delete()
     }
 }

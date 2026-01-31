@@ -15,9 +15,9 @@ enum UPSStatus: String, Codable {
     case ups_offline
 }
 
-// MARK: - APNSEnvironment
+// MARK: - PushEnvironment
 
-enum APNSEnvironment: String, Codable {
+enum PushEnvironment: String, Codable {
     case sandbox
     case production
 }

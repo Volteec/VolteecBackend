@@ -5,9 +5,9 @@ struct DeviceRegistrationDTO: Content {
     let upsId: String
     let upsAlias: String?
     let deviceToken: String
-    let environment: APNSEnvironment?
+    let environment: PushEnvironment?
 
-    var resolvedEnvironment: APNSEnvironment {
+    var resolvedEnvironment: PushEnvironment {
         environment ?? .sandbox
     }
 }

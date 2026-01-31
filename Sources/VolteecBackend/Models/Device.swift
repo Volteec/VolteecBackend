@@ -22,7 +22,7 @@ final class Device: Model, Content, @unchecked Sendable {
     var tokenHash: String?
 
     @Enum(key: "environment")
-    var environment: APNSEnvironment
+    var environment: PushEnvironment
 
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
@@ -37,7 +37,7 @@ final class Device: Model, Content, @unchecked Sendable {
         upsAlias: String? = nil,
         deviceToken: String,
         tokenHash: String? = nil,
-        environment: APNSEnvironment
+        environment: PushEnvironment
     ) {
         self.id = id
         self.upsId = upsId

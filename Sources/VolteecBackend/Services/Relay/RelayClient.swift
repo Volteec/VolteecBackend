@@ -20,7 +20,7 @@ actor RelayClient {
     ///   - eventType: Type of event (e.g., "ups_status_change")
     ///   - status: UPS status (e.g., "online", "on_battery", "ups_offline")
     ///   - upsId: UPS identifier
-    ///   - environment: APNs environment ("sandbox", "production")
+    ///   - environment: push environment ("sandbox", "production")
     ///   - timestamp: Unix timestamp (seconds)
     ///   - batteryLevel: Optional battery percentage (0-100)
     ///   - installationId: Optional installation target
