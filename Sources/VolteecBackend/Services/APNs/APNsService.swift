@@ -171,7 +171,9 @@ private func withTimeout(
             throw APNSTimeoutError()
         }
 
-        _ = try await group.next()!
+        guard let _ = try await group.next() else {
+            throw APNSTimeoutError()
+        }
         group.cancelAll()
         return
     }

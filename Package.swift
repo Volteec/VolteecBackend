@@ -13,8 +13,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", exact: "2.94.0"),
         .package(url: "https://github.com/vapor/apns.git", exact: "4.2.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", exact: "3.15.1"),
-        // Pin VolteecShared to exact revision for reproducibility
-        .package(url: "https://github.com/TeoDragan/VolteecShared.git", revision: "16afdaa9f8d7ec2d7cee3810521ad5d5e489e1ae"),
+        // Pin VolteecShared to semver tag for release stability
+        .package(url: "https://github.com/Volteec/VolteecShared.git", from: "1.0.0"),
     ],
     targets: [
         .executableTarget(

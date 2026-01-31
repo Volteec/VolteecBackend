@@ -32,7 +32,10 @@ func routes(_ app: Application) throws {
 
     // Versioned API routes (protected) - only if API_TOKEN is configured
     if let apiTokenHash = config.apiTokenHash {
-        let v1 = app.grouped("v1").grouped(AuthMiddleware(validTokenHash: apiTokenHash))
+        let v1 = app
+            .grouped("v1")
+            .grouped(RateLimitMiddleware())
+            .grouped(AuthMiddleware(validTokenHash: apiTokenHash))
 
         try v1.register(collection: UPSController())
         try v1.register(collection: DeviceController())

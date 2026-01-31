@@ -1,21 +1,24 @@
 # Volteec Backend
 
-**v0.1.0 (2026-01-06)** — Swift 6.1 / Vapor 4.115.0 — V1.1 local backend with NUT polling (phase 1)
+**v1.0.0 (2026-01-31)** — Swift 6.1 / Vapor 4.121.1 — V1 local backend with NUT polling
 
-Local, self-hosted backend for UPS monitoring (NUT/SNMP). Aligned to the canonical backend document and Task-DevOps-003.
+Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical backend document and Task-DevOps-003.
 
 **README language:** English only. All backend text, comments, and commit messages must be English.
 
 ## Status
 
-Current version: v0.1.0 (2026-01-06) — Swift 6.1 / Vapor 4.115.0.  
-Current content: auth middleware, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping.  
-Planned content: SNMP polling, APNs push (owner-only tests in V1.1; public builds disabled), SSE updates tied to real-time polling.
+Current version: v1.0.0 (2026-01-31) — Swift 6.1 / Vapor 4.121.1.  
+Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration, APNs support (optional).  
+Planned content: SNMP polling (deferred).
 
 ### Patch History
 
-**v0.1.0 (2026-01-06) — NUT polling (phase 1)**  
-- NUT TCP client + poller, env config, canonical mapping, offline handling, extended metrics persisted
+**v1.0.0 (2026-01-31) — V1 backend release**  
+- NUT TCP client + poller, env config, canonical mapping, offline handling, extended metrics persisted  
+- Auth middleware + rate limiting  
+- SSE stream + /metrics  
+- Relay integration for push fan-out  
 
 **v0.0.1 (2026-01-06) — initial skeleton**  
 - Placeholder structure only (no business logic)
@@ -26,7 +29,7 @@ Planned content: SNMP polling, APNs push (owner-only tests in V1.1; public build
 
 - **Canonical-first**: scope and API follow `Volteec Backend/Volteec-Backend-Canonical.md`.
 - **Docker-first**: backend runs in Docker; local development uses docker-compose.
-- **Postgres for V1.1**: minimal DB for `ups` and `devices`.
+- **Postgres for V1**: minimal DB for `ups` and `devices`.
 - **Phase 1 (NUT-only)**: NUT TCP polling enabled; SNMP deferred.
 - **English-only backend**: text, comments, and commits must be in English.
 
@@ -55,6 +58,10 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
   - `/v1/*` routes are disabled
   - logs a critical warning at boot
 
+### Rate limiting
+- `/v1/*` routes are rate limited per IP (default: 60 requests/minute).  
+  V1 uses in-memory limits (single-instance). If you deploy behind a reverse proxy, add external rate limiting there too.
+
 ### CORS Policy
 - Explicitly configured with `allowedOrigin = .none` (no cross-origin access).
 
@@ -69,15 +76,59 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 ## Usage
 
 Minimal usage (local):
-- Configure NUT env vars (see below).
+- Configure env vars (see below).
 - Run backend; NUT polling starts if `NUT_HOST` is set.
-- REST endpoints: `GET /ups`, `GET /ups/{upsId}/status`.
-- SSE stream: `GET /events?rate=1s|3s|5s`.
+- REST endpoints (all under `/v1`, protected by `API_TOKEN`):
+  - `GET /v1/ups`
+  - `GET /v1/ups/{upsId}/status`
+  - `POST /v1/register-device`
+  - `POST /v1/unregister-device`
+  - `POST /v1/relay/pair`
+  - `GET /v1/events?rate=1s|3s|5s`
+  - `GET /v1/status`
+- Public endpoints:
+  - `GET /health`
+  - `GET /ready`
+  - `GET /metrics`
+
+Note: `POST /v1/status/simulate-push` is available only when `ENVIRONMENT != production`.
 
 Note: API responses currently expose the minimal fields (battery/runtime/load/input/output). Extended NUT fields are stored in the DB for future expansion.
 
-## Configuration (NUT)
+## Configuration
 
+### Core (required)
+- `API_TOKEN` (required for `/v1/*` routes)
+- `DEVICE_TOKEN_KEY` (required; AES-256 key, base64, 32 bytes)
+
+### Database
+- `DATABASE_HOST`
+- `DATABASE_PORT`
+- `DATABASE_USERNAME`
+- `DATABASE_PASSWORD`
+- `DATABASE_NAME`
+- `DATABASE_TLS_MODE` (optional; `require` | `prefer` | `disable`)
+
+### APNs (optional)
+If `APNS_KEY_P8_PATH` is set, all other APNs variables are required:
+- `APNS_KEY_P8_PATH`
+- `APNS_TEAM_ID`
+- `APNS_KEY_ID`
+- `APNS_TOPIC`
+- `APNS_ENVIRONMENT` (`sandbox` | `production`)
+
+### Relay (optional)
+If `RELAY_URL` is set, all other `RELAY_*` variables are required:
+- `RELAY_URL`
+- `RELAY_TENANT_ID`
+- `RELAY_TENANT_SECRET`
+- `RELAY_SERVER_ID`
+
+### Backend versioning (optional)
+- `BACKEND_PROTOCOL_VERSION` (default: `1.1`)
+- `BACKEND_SOFTWARE_VERSION` (default: `1.1.0`)
+
+### NUT (optional; enables polling)
 Required:
 - `NUT_HOST` (host/IP)
 - `NUT_UPS` (CSV list, e.g. `ups1,ups2`)
@@ -101,10 +152,14 @@ Sources/VolteecBackend/
 ├── Models/
 ├── Migrations/
 ├── Services/
+│   ├── APNs/
+│   ├── Compatibility/
+│   ├── Events/
+│   ├── Metrics/
 │   ├── NUT/
-│   ├── SNMP/
+│   ├── Relay/
 │   ├── SSE/
-│   └── Push/
+│   └── SNMP/ (reserved; not implemented in V1)
 ├── Storage/
 ├── Utilities/
 └── Config/
@@ -116,14 +171,15 @@ Sources/VolteecBackend/
 
 ## Version
 
-- **Current**: v0.0.1
+- **Current**: v1.0.0 (2026-01-31)
 - **Platform**: Linux (Docker)
 - **Swift**: 6.1
+- **Vapor**: 4.121.1
 
 ## Build Status
 
-TBD
+Not configured.
 
 ## Compatibility
-- VolteecShared version is pinned in `Package.swift`.
+- VolteecShared version is pinned in `Package.swift` (`from: 1.0.0`).
 - API versioning is `/v1/*` with response `apiVersion = "1.0"`.
