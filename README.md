@@ -1,6 +1,6 @@
 # Volteec Backend
 
-**v1.0.0 (2026-01-31)** — Swift 6.1 / Vapor 4.121.1 — V1 local backend with NUT polling
+**v1.0.0 (2026-01-31)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
 
 Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical backend document and Task-DevOps-003.
 
@@ -8,7 +8,7 @@ Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical ba
 
 ## Status
 
-Current version: v1.0.0 (2026-01-31) — Swift 6.1 / Vapor 4.121.1.  
+Current version: v1.0.0 (2026-01-31) — Swift 6.2 / Vapor 4.121.1.  
 Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration.  
 Planned content: SNMP polling (deferred).
 
@@ -210,7 +210,7 @@ Sources/VolteecBackend/
 
 - **Current**: v1.0.0 (2026-01-31)
 - **Platform**: Linux (Docker)
-- **Swift**: 6.1
+- **Swift**: 6.2
 - **Vapor**: 4.121.1
 
 ## Build Status
