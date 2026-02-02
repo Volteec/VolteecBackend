@@ -38,15 +38,35 @@ Planned content: SNMP polling (deferred).
 This backend runs locally/self-hosted and is intended for single-instance deployment.
 
 ### Requirements
-- Docker + Docker Compose
+- Docker + Docker Compose (Docker Desktop on macOS/Windows)
 - Postgres (via docker-compose)
 
 ### Quick Start (Docker)
-1) Copy `.env.example` to `.env` and fill required values.
-2) Run migrations:
-   - `docker compose run migrate`
-3) Start backend:
+1) Clone the repo.
+2) Copy `.env.example` to `.env` and fill required values.
+3) Run migrations:
+   - `docker compose run --rm migrate`
+4) Start backend:
    - `docker compose up app`
+
+This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:latest`) by default.
+
+### Public Docker Flow (Recommended)
+
+```bash
+git clone https://github.com/Volteec/VolteecBackend
+cd VolteecBackend
+cp .env.example .env
+# edit .env (API_TOKEN, DEVICE_TOKEN_KEY, optional NUT/RELAY)
+docker compose run --rm migrate
+docker compose up app
+```
+
+### Local Development (Build from Source)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build app
+```
 
 ### Health & Readiness
 - `GET /health` — liveness (always available)
@@ -72,6 +92,15 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 ### Verification (manual)
 - Metrics: `curl -s http://localhost:8080/metrics | head`
 - Request ID: `curl -s -H "X-Request-ID: test-123" http://localhost:8080/health -i` (expect `X-Request-ID: test-123`)
+
+### NUT over SSH Tunnel (macOS/Windows Docker)
+
+If you run Docker on macOS/Windows and use an SSH tunnel to a NUT host:
+- Start tunnel on the host machine:
+  - `ssh -L 3493:127.0.0.1:3493 user@nut-host`
+- Set in `.env`:
+  - `NUT_HOST=host.docker.internal`
+  - `NUT_PORT=3493`
 
 ## Usage
 

@@ -1,0 +1,15 @@
+services:
+  app:
+    build:
+      context: .
+    image: volteecbackend:dev
+
+  migrate:
+    build:
+      context: .
+    image: volteecbackend:dev
+
+  revert:
+    build:
+      context: .
+    image: volteecbackend:dev
