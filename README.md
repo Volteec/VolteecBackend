@@ -47,7 +47,10 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
    - Local Docker: keep `DATABASE_TLS_MODE=disable` (the default Postgres container has TLS off).
    - Production: set `DATABASE_TLS_MODE=require` and enable TLS on your Postgres server.
 3) Run migrations:
-   - `docker compose run --rm migrate`
+   - First start the database and wait a few seconds:
+     - `docker compose up -d db`
+   - Then run migrations:
+     - `docker compose run --rm migrate`
 4) Start backend:
    - `docker compose up app`
 
@@ -62,6 +65,13 @@ cp ENV.template .env
 # edit .env (API_TOKEN, DEVICE_TOKEN_KEY, Relay + optional NUT, DATABASE_TLS_MODE)
 docker compose run --rm migrate
 docker compose up app
+```
+
+Note: On a fresh setup, Postgres may need a few seconds to initialize. If you see
+`connection refused` when running migrations, start the DB first:
+```bash
+docker compose up -d db
+docker compose run --rm migrate
 ```
 
 ### Required Environment Values (Beta)
@@ -139,6 +149,64 @@ If you run Docker on macOS/Windows and use an SSH tunnel to a NUT host:
 - Set in `.env`:
   - `NUT_HOST=host.docker.internal`
   - `NUT_PORT=3493`
+
+## Troubleshooting & FAQ
+
+Q: I get `{"reason":"Something went wrong."}` on `GET /v1/ups`.  
+A: Database migrations were not run, so tables do not exist. Run:
+```bash
+docker compose run --rm migrate
+```
+
+Q: Backend starts, but NUT times out.  
+A: On many Raspberry Pi setups, `upsd` listens only on `127.0.0.1:3493`, so Docker cannot reach it.
+Fastest fix (no Pi changes) is an SSH tunnel:
+```bash
+ssh -L 3493:127.0.0.1:3493 user@nut-host
+```
+Then set:
+- `NUT_HOST=host.docker.internal`
+- `NUT_PORT=3493`
+Keep the SSH session open.
+
+Q: How do I find the UPS name(s) for `NUT_UPS`?  
+A:
+```bash
+upsc -l localhost
+```
+Example output: `cyberpower`
+
+Q: `/health` works in Safari, but the app fails to connect.  
+A: Common causes:
+- You used `localhost` from the phone. Use your Mac's LAN IP instead.
+- The app expects a specific token format (see below).
+- The app adds `/v1` automatically, or you added it twice (see below).
+
+Q: Push notifications do not work.  
+A: Relay credentials (`RELAY_TENANT_ID` and `RELAY_TENANT_SECRET`) are issued by Volteec and cannot be generated locally.
+If you do not have them, the backend still works, but push is disabled.
+
+## How to Connect (iOS app)
+
+1. Server URL  
+Use your Mac's LAN IP, not `localhost`. Example:
+```
+http://192.168.1.106:8080
+```
+
+2. Token format  
+If the field is labeled `Token Bearer`, paste only the token (no `Bearer` prefix).  
+If the field is labeled `Token`, use:
+```
+Bearer <your_token_here>
+```
+
+3. `/v1` in the URL  
+If the app adds `/v1` automatically, do not include it in the URL.  
+If it does not add it, use:
+```
+http://192.168.1.106:8080/v1
+```
 
 ## Usage
 
