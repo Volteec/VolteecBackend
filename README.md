@@ -43,7 +43,7 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 
 ### Quick Start (Docker)
 1) Clone the repo.
-2) Copy `.env.example` to `.env` and fill required values.
+2) Copy `ENV.template` to `.env` and fill required values.
 3) Run migrations:
    - `docker compose run --rm migrate`
 4) Start backend:
@@ -56,11 +56,47 @@ This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:latest`) b
 ```bash
 git clone https://github.com/Volteec/VolteecBackend
 cd VolteecBackend
-cp .env.example .env
-# edit .env (API_TOKEN, DEVICE_TOKEN_KEY, optional NUT/RELAY)
+cp ENV.template .env
+# edit .env (API_TOKEN, DEVICE_TOKEN_KEY, Relay + optional NUT)
 docker compose run --rm migrate
 docker compose up app
 ```
+
+### Required Environment Values (Beta)
+
+You must set these in `.env`:
+
+- `API_TOKEN` — any strong random token (used for API auth)
+- `DEVICE_TOKEN_KEY` — base64 **32 bytes** (AES‑256 key)
+- Relay credentials (required for push):
+  - `RELAY_URL`
+  - `RELAY_TENANT_ID`
+  - `RELAY_TENANT_SECRET`
+  - `RELAY_SERVER_ID`
+  - `RELAY_ENVIRONMENT`
+
+Generate tokens:
+
+```bash
+openssl rand -hex 32    # API_TOKEN
+openssl rand -base64 32 # DEVICE_TOKEN_KEY
+```
+
+### Relay (Push Notifications)
+
+Push notifications require Relay configuration. If `RELAY_URL` is not set, push is disabled.
+For beta testing, use the sandbox relay:
+
+- `RELAY_URL=https://dev-api.volteec.com/v1`
+- `RELAY_TENANT_ID`, `RELAY_TENANT_SECRET`, `RELAY_SERVER_ID` (required)
+- `RELAY_ENVIRONMENT=sandbox`
+
+Relay credentials are issued by Volteec (beta). If you do not have them, push notifications will not work.
+`RELAY_SERVER_ID` must be a stable UUID per backend instance (generate once with `uuidgen`).
+
+Beta shared tenant:
+- `RELAY_TENANT_ID=4970ad4f-69df-41ff-8f56-e36e88bc6e32`
+- `RELAY_TENANT_SECRET` is provided by Volteec (do not share publicly).
 
 ### Local Development (Build from Source)
 
