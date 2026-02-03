@@ -150,6 +150,9 @@ If you run Docker on macOS/Windows and use an SSH tunnel to a NUT host:
   - `NUT_HOST=host.docker.internal`
   - `NUT_PORT=3493`
 
+Note: On many NUT installations, `upsd` listens only on `127.0.0.1`. In that case, Docker
+cannot connect directly; use port-forwarding (SSH tunnel) or expose `upsd` on `0.0.0.0`.
+
 ## Troubleshooting & FAQ
 
 Q: I get `{"reason":"Something went wrong."}` on `GET /v1/ups`.  
@@ -159,7 +162,7 @@ docker compose run --rm migrate
 ```
 
 Q: Backend starts, but NUT times out.  
-A: On many Raspberry Pi setups, `upsd` listens only on `127.0.0.1:3493`, so Docker cannot reach it.
+A: On many NUT installations, `upsd` listens only on `127.0.0.1:3493`, so Docker cannot reach it.
 Fastest fix (no Pi changes) is an SSH tunnel:
 ```bash
 ssh -L 3493:127.0.0.1:3493 user@nut-host
