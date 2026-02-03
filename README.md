@@ -44,6 +44,8 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 ### Quick Start (Docker)
 1) Clone the repo.
 2) Copy `ENV.template` to `.env` and fill required values.
+   - Local Docker: keep `DATABASE_TLS_MODE=disable` (the default Postgres container has TLS off).
+   - Production: set `DATABASE_TLS_MODE=require` and enable TLS on your Postgres server.
 3) Run migrations:
    - `docker compose run --rm migrate`
 4) Start backend:
@@ -57,7 +59,7 @@ This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:latest`) b
 git clone https://github.com/Volteec/VolteecBackend
 cd VolteecBackend
 cp ENV.template .env
-# edit .env (API_TOKEN, DEVICE_TOKEN_KEY, Relay + optional NUT)
+# edit .env (API_TOKEN, DEVICE_TOKEN_KEY, Relay + optional NUT, DATABASE_TLS_MODE)
 docker compose run --rm migrate
 docker compose up app
 ```
@@ -173,6 +175,8 @@ Note: API responses currently expose the minimal fields (battery/runtime/load/in
 - `DATABASE_PASSWORD`
 - `DATABASE_NAME`
 - `DATABASE_TLS_MODE` (optional; `require` | `prefer` | `disable`)
+  - Default is `disable` when not set (easier local setup).
+  - Production: set `require` and enable TLS on your Postgres server.
 
 ### Relay (optional)
 If `RELAY_URL` is set, all other `RELAY_*` variables are required:

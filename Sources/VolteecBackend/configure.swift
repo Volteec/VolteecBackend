@@ -167,7 +167,7 @@ private struct NUTPollerKey: StorageKey {
 /// Parse DATABASE_TLS_MODE environment variable
 /// Valid values: require (default), prefer, disable
 private func parseDatabaseTLSMode(app: Application) throws -> PostgresConnection.Configuration.TLS {
-    let mode = Environment.get("DATABASE_TLS_MODE") ?? "require"
+    let mode = Environment.get("DATABASE_TLS_MODE") ?? "disable"
 
     switch mode.lowercased() {
     case "require":
