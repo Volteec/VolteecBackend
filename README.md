@@ -260,9 +260,8 @@ If `RELAY_URL` is set, all other `RELAY_*` variables are required:
 - `RELAY_SERVER_ID`
 - `RELAY_ENVIRONMENT` (`sandbox` | `production`, optional)
 
-### Backend versioning (optional)
-- `BACKEND_PROTOCOL_VERSION` (default: `1.1`)
-- `BACKEND_SOFTWARE_VERSION` (default: `1.1.0`)
+### Backend versioning
+Backend version strings are set at build time (not via `.env`).
 
 ### NUT (optional; enables polling)
 Required:

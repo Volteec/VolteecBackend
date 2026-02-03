@@ -49,12 +49,7 @@ struct UpdateCheckerService {
             let meta = try await fetchRelayMeta(url: relayUrl)
 
             // 3. Calculate State using Shared Logic
-            // Current Server Protocol is defined in Environment (Task-023 Refinement)
-            let serverProtocol = Environment.get("BACKEND_PROTOCOL_VERSION") ?? "1.1"
-
-            if Environment.get("BACKEND_PROTOCOL_VERSION") == nil {
-                app.logger.warning("BACKEND_PROTOCOL_VERSION not set in .env. Defaulting to \(serverProtocol).")
-            }
+            let serverProtocol = BuildInfo.protocolVersion
 
             let state = VersionLogic.calculateState(
                 serverProtocol: serverProtocol,

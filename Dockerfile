@@ -25,6 +25,15 @@ COPY . .
 
 RUN mkdir /staging
 
+# Build metadata (override in CI)
+ARG BACKEND_SOFTWARE_VERSION=1.1.0
+ARG BACKEND_PROTOCOL_VERSION=1.1
+ARG BACKEND_COMMIT=unknown
+ARG BACKEND_BUILD_DATE=unknown
+
+# Write build metadata into Sources before compilation
+RUN /bin/sh -c 'cat > /build/Sources/VolteecBackend/BuildInfo.swift <<EOF\nimport Foundation\n\nenum BuildInfo {\n    static let softwareVersion = \"${BACKEND_SOFTWARE_VERSION}\"\n    static let protocolVersion = \"${BACKEND_PROTOCOL_VERSION}\"\n    static let commit = \"${BACKEND_COMMIT}\"\n    static let buildDate = \"${BACKEND_BUILD_DATE}\"\n}\nEOF'
+
 # Build the application, with optimizations, with static linking, and using jemalloc
 # N.B.: The static version of jemalloc is incompatible with the static Swift runtime.
 RUN --mount=type=cache,target=/build/.build \

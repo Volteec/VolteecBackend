@@ -22,9 +22,9 @@ struct StatusController: RouteCollection {
     
     /// Returns the server's protocol version and compatibility status.
     func getStatus(req: Request) async throws -> ServerStatusResponse {
-        // 1. Get Version Info from Environment
-        let protocolVersion = Environment.get("BACKEND_PROTOCOL_VERSION") ?? "1.1"
-        let softwareVersion = Environment.get("BACKEND_SOFTWARE_VERSION") ?? protocolVersion
+        // 1. Get Version Info from Build
+        let protocolVersion = BuildInfo.protocolVersion
+        let softwareVersion = BuildInfo.softwareVersion
         
         // 2. Get Dynamic Compatibility State
         let compatibilityState = req.application.updateChecker.getCurrentState()
