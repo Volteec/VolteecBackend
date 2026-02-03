@@ -176,6 +176,9 @@ upsc -l localhost
 ```
 Example output: `cyberpower`
 
+Q: UPS stays offline after changing `NUT_UPS`.  
+A: The app may cache server/UPS state. Re-add the server or remove and add it again after updating `NUT_UPS`.
+
 Q: `/health` works in Safari, but the app fails to connect.  
 A: Common causes:
 - You used `localhost` from the phone. Use your Mac's LAN IP instead.
