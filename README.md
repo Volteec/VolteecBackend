@@ -43,7 +43,8 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 
 ### Quick Start (Docker)
 1) Clone the repo.
-2) Copy `ENV.template` to `.env` and fill required values.
+2) Copy `.env.example` to `.env` and fill required values.
+   - Note: `.env.example` starts with a dot, so it may be hidden in Finder. Enable “Show Hidden Files” (Cmd+Shift+.) or copy it from Terminal.
    - Local Docker: keep `DATABASE_TLS_MODE=disable` (the default Postgres container has TLS off).
    - Production: set `DATABASE_TLS_MODE=require` and enable TLS on your Postgres server.
 3) Run migrations:
@@ -61,7 +62,7 @@ This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:latest`) b
 ```bash
 git clone https://github.com/Volteec/VolteecBackend
 cd VolteecBackend
-cp ENV.template .env
+cp .env.example .env
 # edit .env (API_TOKEN, DEVICE_TOKEN_KEY, Relay + optional NUT, DATABASE_TLS_MODE)
 docker compose run --rm migrate
 docker compose up app
@@ -105,6 +106,8 @@ For beta testing, use the sandbox relay:
 
 Relay credentials are issued by Volteec (beta). If you do not have them, push notifications will not work.
 `RELAY_SERVER_ID` must be a stable UUID per backend instance (generate once with `uuidgen`).
+Relay credentials are generated in the Volteec app (Settings → Help Center → How to Connect → Resources → Relay Credentials) and must be copied into the backend `.env`.
+`RELAY_URL` and `RELAY_ENVIRONMENT` are internal-only and are provided in `.env.local`. Do not change them. If you do, the app will not connect.
 
 Beta shared tenant:
 - `RELAY_TENANT_ID=4970ad4f-69df-41ff-8f56-e36e88bc6e32`
@@ -189,7 +192,7 @@ A: Common causes:
 - The app adds `/v1` automatically, or you added it twice (see below).
 
 Q: Push notifications do not work.  
-A: Relay credentials (`RELAY_TENANT_ID` and `RELAY_TENANT_SECRET`) are issued by Volteec and cannot be generated locally.
+A: Relay credentials (`RELAY_TENANT_ID` and `RELAY_TENANT_SECRET`) are generated in the Volteec app (Settings → Help Center → How to Connect → Resources → Relay Credentials) and cannot be generated locally.
 If you do not have them, the backend still works, but push is disabled.
 
 ## How to Connect (iOS app)
@@ -199,6 +202,9 @@ Use your Mac's LAN IP, not `localhost`. Example:
 ```
 http://192.168.1.106:8080
 ```
+
+2. API Token  
+In the app, enter the **exact** `API_TOKEN` value from your backend `.env` in the Token field (Add Server).
 
 2. Token format  
 If the field is labeled `Token Bearer`, paste only the token (no `Bearer` prefix).  
