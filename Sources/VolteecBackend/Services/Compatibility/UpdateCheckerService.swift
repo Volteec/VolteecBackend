@@ -36,10 +36,10 @@ struct UpdateCheckerService {
     /// Checks the Relay metadata and updates local compatibility state.
     /// Should be called periodically (e.g., daily) and on startup.
     func updateCompatibilityState() async {
-        // 1. Get Relay URL from configuration (Environment)
-        guard let relayUrlString = Environment.get("RELAY_URL"),
-              let relayUrl = URL(string: relayUrlString)?.appendingPathComponent("meta") else {
-            app.logger.info("RELAY_URL not configured. Server operating in standalone mode (supported).")
+        // 1. Get Relay URL from the configured RelayConfig (internal-only base URL).
+        guard let relayConfig = RelayConfig.get(from: app),
+              let relayUrl = URL(string: relayConfig.url)?.appendingPathComponent("meta") else {
+            app.logger.info("Relay not configured. Server operating in standalone mode (supported).")
             app.storage[CompatibilityCacheKey.self] = .supported
             return
         }

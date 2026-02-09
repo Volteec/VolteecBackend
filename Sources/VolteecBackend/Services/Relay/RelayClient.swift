@@ -8,6 +8,7 @@ actor RelayClient {
     private let app: Application
     private let config: RelayConfig
     private let logger: Logger
+    private static let maxLoggedResponseBodyBytes = 2048
 
     init(app: Application, config: RelayConfig) {
         self.app = app
@@ -132,7 +133,10 @@ actor RelayClient {
         if response.status.code >= 200 && response.status.code < 300 {
             logger.debug("Successfully sent event to relay for UPS \(upsId)")
         } else {
-            logger.error("Relay returned error status \(response.status.code) for UPS \(upsId)")
+            logger.error(
+                "Relay returned error status \(response.status.code) for UPS \(upsId)",
+                metadata: relayErrorMetadata(requestId: eventId, response: response)
+            )
             throw RelayError.relayErrorStatus(response.status.code)
         }
     }
@@ -169,7 +173,8 @@ actor RelayClient {
         headers.add(name: "Content-Type", value: "application/json")
         headers.add(name: "X-Volteec-Signature", value: signature)
         headers.add(name: "X-Volteec-Nonce", value: nonce)
-        headers.add(name: "X-Request-ID", value: UUID().uuidString)
+        let requestId = UUID().uuidString
+        headers.add(name: "X-Request-ID", value: requestId)
 
         let httpRequest = ClientRequest(
             method: .POST,
@@ -180,6 +185,10 @@ actor RelayClient {
 
         let response = try await app.client.send(httpRequest)
         guard (200..<300).contains(response.status.code) else {
+            logger.error(
+                "Relay returned error status \(response.status.code) for pairing",
+                metadata: relayErrorMetadata(requestId: requestId, response: response)
+            )
             throw RelayError.relayErrorStatus(response.status.code)
         }
     }
@@ -216,7 +225,8 @@ actor RelayClient {
             headers.add(name: "Content-Type", value: "application/json")
             headers.add(name: "X-Volteec-Signature", value: signature)
             headers.add(name: "X-Volteec-Nonce", value: nonce)
-            headers.add(name: "X-Request-ID", value: UUID().uuidString)
+            let requestId = UUID().uuidString
+            headers.add(name: "X-Request-ID", value: requestId)
 
             let httpRequest = ClientRequest(
                 method: .POST,
@@ -230,7 +240,10 @@ actor RelayClient {
             if response.status.code >= 200 && response.status.code < 300 {
                 logger.debug("Successfully sent heartbeat to relay")
             } else {
-                logger.error("Relay returned error status \(response.status.code) for heartbeat")
+                logger.error(
+                    "Relay returned error status \(response.status.code) for heartbeat",
+                    metadata: relayErrorMetadata(requestId: requestId, response: response)
+                )
             }
         } catch {
             logger.error("Failed to send heartbeat to relay: \(error)")
@@ -318,6 +331,88 @@ actor RelayClient {
 
     private func generateNonce() -> String {
         UUID().uuidString
+    }
+
+    private func relayErrorMetadata(requestId: String, response: ClientResponse) -> Logger.Metadata {
+        var metadata: Logger.Metadata = [
+            "relayRequestId": .string(requestId),
+            "relayStatus": .stringConvertible(response.status.code)
+        ]
+
+        let body = sanitizedResponseBody(from: response, limitBytes: Self.maxLoggedResponseBodyBytes)
+        if !body.isEmpty {
+            metadata["relayBody"] = .string(body)
+        }
+        return metadata
+    }
+
+    private func sanitizedResponseBody(from response: ClientResponse, limitBytes: Int) -> String {
+        guard let buffer = response.body else {
+            return ""
+        }
+
+        let readable = buffer.readableBytes
+        guard readable > 0 else {
+            return ""
+        }
+
+        let readLen = min(readable, max(0, limitBytes))
+        let raw = buffer.getString(at: buffer.readerIndex, length: readLen) ?? ""
+        return redactSensitiveFields(in: raw)
+    }
+
+    private func redactSensitiveFields(in raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+
+        guard let data = trimmed.data(using: .utf8) else {
+            return trimmed
+        }
+
+        // Best-effort JSON redaction for common sensitive keys.
+        if let json = try? JSONSerialization.jsonObject(with: data),
+           let redacted = redactedJSONValue(json, depthLimit: 20),
+           let redactedData = try? JSONSerialization.data(withJSONObject: redacted),
+           let redactedString = String(data: redactedData, encoding: .utf8) {
+            return redactedString
+        }
+
+        return trimmed
+    }
+
+    private func redactedJSONValue(_ value: Any, depthLimit: Int) -> Any? {
+        guard depthLimit > 0 else { return "<redacted>" }
+
+        let sensitiveKeys = [
+            "secret",
+            "tenantSecret",
+            "token",
+            "sessionToken",
+            "signature",
+            "authorization",
+            "nonce",
+            "deviceToken"
+        ]
+
+        if let dict = value as? [String: Any] {
+            var out: [String: Any] = [:]
+            out.reserveCapacity(dict.count)
+            for (k, v) in dict {
+                if sensitiveKeys.contains(where: { $0.caseInsensitiveCompare(k) == .orderedSame }) {
+                    out[k] = "<redacted>"
+                } else {
+                    out[k] = redactedJSONValue(v, depthLimit: depthLimit - 1) ?? "<unprintable>"
+                }
+            }
+            return out
+        }
+
+        if let arr = value as? [Any] {
+            return arr.map { redactedJSONValue($0, depthLimit: depthLimit - 1) ?? "<unprintable>" }
+        }
+
+        // Primitive JSON types are safe to log.
+        return value
     }
 }
 

@@ -79,7 +79,7 @@ public func configure(_ app: Application) async throws {
 
     // Try to configure relay first (preferred)
     do {
-        if let relayConfig = RelayConfig.load() {
+        if let relayConfig = try RelayConfig.load() {
             // Validate relay URL
             try relayConfig.validate()
 

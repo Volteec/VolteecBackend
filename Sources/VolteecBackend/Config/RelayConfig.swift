@@ -2,8 +2,45 @@ import Vapor
 import Foundation
 
 /// Relay configuration loaded from environment variables
-/// Returns nil if RELAY_URL is not set, enabling graceful degradation
+/// Returns nil if Relay is not configured, enabling graceful degradation.
 struct RelayConfig {
+    // Internal-only: Relay base URL and environment are intentionally NOT configurable
+    // via .env to prevent accidental misconfiguration.
+    //
+    // For internal production deployments, operators can set:
+    //   VOLTEEC_DEPLOYMENT=production
+    // This switches the Relay target to production without changing user-facing setup.
+    private enum RelayTarget: String {
+        case sandbox
+        case production
+    }
+
+    private static func resolvedTarget() -> RelayTarget {
+        let deployment = (Environment.get("VOLTEEC_DEPLOYMENT") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if deployment == RelayTarget.production.rawValue {
+            return .production
+        }
+        return .sandbox
+    }
+
+    private static var fixedBaseURL: String {
+        switch resolvedTarget() {
+        case .sandbox:
+            return "https://dev-api.volteec.com/v1"
+        case .production:
+            return "https://api.volteec.com/v1"
+        }
+    }
+
+    private static var fixedEnvironment: String {
+        switch resolvedTarget() {
+        case .sandbox:
+            return "sandbox"
+        case .production:
+            return "production"
+        }
+    }
+
     let url: String
     let tenantId: String
     let tenantSecret: String
@@ -12,25 +49,25 @@ struct RelayConfig {
 
     /// Configuration error types
     enum ConfigError: Error, CustomStringConvertible {
-        case missingURL
         case missingTenantId
         case missingTenantSecret
         case missingServerId
-        case invalidURL(String)
+        case invalidTenantId(String)
         case invalidServerId(String)
+        case invalidURL(String)
 
         var description: String {
             switch self {
-            case .missingURL:
-                return "RELAY_URL environment variable is required"
             case .missingTenantId:
                 return "RELAY_TENANT_ID environment variable is required"
             case .missingTenantSecret:
                 return "RELAY_TENANT_SECRET environment variable is required"
             case .missingServerId:
                 return "RELAY_SERVER_ID environment variable is required"
+            case .invalidTenantId(let value):
+                return "Invalid RELAY_TENANT_ID (expected UUID): \(value)"
             case .invalidURL(let url):
-                return "Invalid RELAY_URL: \(url)"
+                return "Invalid Relay base URL: \(url)"
             case .invalidServerId(let value):
                 return "Invalid RELAY_SERVER_ID: \(value)"
             }
@@ -38,50 +75,53 @@ struct RelayConfig {
     }
 
     /// Load configuration from environment variables
-    /// Returns nil if relay is not configured (graceful degradation)
-    /// - Returns: Configured RelayConfig instance or nil if not configured
-    static func load() -> RelayConfig? {
-        // Check if RELAY_URL is set (primary indicator)
-        guard let url = Environment.get("RELAY_URL"), !url.isEmpty else {
+    /// Returns nil if relay is not configured (graceful degradation).
+    /// Throws if relay appears configured (any RELAY_* is set) but is invalid/incomplete.
+    static func load() throws -> RelayConfig? {
+        let tenantIdRaw = Environment.get("RELAY_TENANT_ID") ?? Environment.get("RELAY_CLIENT_ID")
+        let tenantSecretRaw = Environment.get("RELAY_TENANT_SECRET") ?? Environment.get("RELAY_CLIENT_SECRET")
+        let serverIdRaw = Environment.get("RELAY_SERVER_ID")
+
+        let anyRelayEnvSet =
+            (tenantIdRaw?.isEmpty == false) ||
+            (tenantSecretRaw?.isEmpty == false) ||
+            (serverIdRaw?.isEmpty == false)
+
+        guard anyRelayEnvSet else {
             return nil
         }
 
-        // If URL is set, all other variables are required
-        let tenantId = Environment.get("RELAY_TENANT_ID") ?? Environment.get("RELAY_CLIENT_ID")
-        guard let tenantId, !tenantId.isEmpty else {
-            return nil
+        guard let tenantId = tenantIdRaw, !tenantId.isEmpty else {
+            throw ConfigError.missingTenantId
+        }
+        guard let tenantSecret = tenantSecretRaw, !tenantSecret.isEmpty else {
+            throw ConfigError.missingTenantSecret
+        }
+        guard let serverId = serverIdRaw, !serverId.isEmpty else {
+            throw ConfigError.missingServerId
         }
 
-        let tenantSecret = Environment.get("RELAY_TENANT_SECRET") ?? Environment.get("RELAY_CLIENT_SECRET")
-        guard let tenantSecret, !tenantSecret.isEmpty else {
-            return nil
-        }
-
-        guard let serverId = Environment.get("RELAY_SERVER_ID"), !serverId.isEmpty else {
-            return nil
-        }
-
-        guard UUID(uuidString: serverId) != nil else {
-            return nil
-        }
-
-        let environment = (Environment.get("RELAY_ENVIRONMENT") ?? "sandbox").lowercased()
-
-        return RelayConfig(
-            url: url,
+        let config = RelayConfig(
+            url: Self.fixedBaseURL,
             tenantId: tenantId,
             tenantSecret: tenantSecret,
             serverId: serverId,
-            environment: environment
+            environment: Self.fixedEnvironment
         )
+
+        try config.validate()
+        return config
     }
 
     /// Validate that the URL is well-formed
     /// - Throws: ConfigError if validation fails
     func validate() throws {
-        // Ensure URL is valid
         guard URL(string: url) != nil else {
             throw ConfigError.invalidURL(url)
+        }
+
+        guard UUID(uuidString: tenantId) != nil else {
+            throw ConfigError.invalidTenantId(tenantId)
         }
 
         guard UUID(uuidString: serverId) != nil else {
@@ -92,7 +132,7 @@ struct RelayConfig {
     /// Check if relay is configured
     /// - Returns: true if relay configuration is available
     static func isConfigured() -> Bool {
-        return load() != nil
+        (try? load()) != nil
     }
 }
 

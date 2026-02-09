@@ -75,18 +75,16 @@ docker compose up -d db
 docker compose run --rm migrate
 ```
 
-### Required Environment Values (Beta)
+### Required Environment Values
 
 You must set these in `.env`:
 
 - `API_TOKEN` — any strong random token (used for API auth)
 - `DEVICE_TOKEN_KEY` — base64 **32 bytes** (AES‑256 key)
 - Relay credentials (required for push):
-  - `RELAY_URL`
   - `RELAY_TENANT_ID`
   - `RELAY_TENANT_SECRET`
   - `RELAY_SERVER_ID`
-  - `RELAY_ENVIRONMENT`
 
 Generate tokens:
 
@@ -97,21 +95,23 @@ openssl rand -base64 32 # DEVICE_TOKEN_KEY
 
 ### Relay (Push Notifications)
 
-Push notifications require Relay configuration. If `RELAY_URL` is not set, push is disabled.
-For beta testing, use the sandbox relay:
+Push notifications require Relay credentials. If Relay credentials are not set, push is disabled.
+Relay URL and environment are internal-only and are fixed in code (not configurable via `.env`).
 
-- `RELAY_URL=https://dev-api.volteec.com/v1`
-- `RELAY_TENANT_ID`, `RELAY_TENANT_SECRET`, `RELAY_SERVER_ID` (required)
-- `RELAY_ENVIRONMENT=sandbox`
-
-Relay credentials are issued by Volteec (beta). If you do not have them, push notifications will not work.
+Relay credentials are issued by Volteec. If you do not have them, push notifications will not work.
+`RELAY_TENANT_ID` must be a UUID (as provided by the app).
 `RELAY_SERVER_ID` must be a stable UUID per backend instance (generate once with `uuidgen`).
 Relay credentials are generated in the Volteec app (Settings → Help Center → How to Connect → Resources → Relay Credentials) and must be copied into the backend `.env`.
-`RELAY_URL` and `RELAY_ENVIRONMENT` are internal-only and are provided in `.env.local`. Do not change them. If you do, the app will not connect.
 
-Beta shared tenant:
-- `RELAY_TENANT_ID=4970ad4f-69df-41ff-8f56-e36e88bc6e32`
-- `RELAY_TENANT_SECRET` is provided by Volteec (do not share publicly).
+Internal deployments:
+- If you run the backend in production, set `VOLTEEC_DEPLOYMENT=production` in the deployment environment.
+  This switches Relay to production (`https://api.volteec.com/v1`, `environment=production`).
+  Do not add this to `.env.example` or public setup steps (local/self-hosted uses sandbox by default).
+
+Example format (placeholders):
+- `RELAY_TENANT_ID=<uuid>`
+- `RELAY_TENANT_SECRET=<secret>`
+- `RELAY_SERVER_ID=<uuid>`
 
 ### Local Development (Build from Source)
 
@@ -166,7 +166,7 @@ docker compose run --rm migrate
 
 Q: Backend starts, but NUT times out.  
 A: On many NUT installations, `upsd` listens only on `127.0.0.1:3493`, so Docker cannot reach it.
-Fastest fix (no Pi changes) is an SSH tunnel:
+Fastest fix is an SSH tunnel:
 ```bash
 ssh -L 3493:127.0.0.1:3493 user@nut-host
 ```
@@ -180,45 +180,47 @@ A:
 ```bash
 upsc -l localhost
 ```
-Example output: `cyberpower`
+Example output: `<ups_name_from_upsc>`
 
 Q: UPS stays offline after changing `NUT_UPS`.  
 A: The app may cache server/UPS state. Re-add the server or remove and add it again after updating `NUT_UPS`.
 
 Q: `/health` works in Safari, but the app fails to connect.  
 A: Common causes:
-- You used `localhost` from the phone. Use your Mac's LAN IP instead.
-- The app expects a specific token format (see below).
-- The app adds `/v1` automatically, or you added it twice (see below).
+- Your phone/PC is not on the same LAN/Wi‑Fi as the backend host.
+- Firewall blocks inbound access to the backend port (default `8080`).
+- You used `localhost` from the phone. Use the backend host's LAN IP instead.
+- The app cannot authenticate (invalid token / token format).
+
+LAN connectivity test (from the same network as the backend host):
+- `http://<BACKEND_LAN_IP>:8080/health`
+- `http://<BACKEND_LAN_IP>:8080/ready`
 
 Q: Push notifications do not work.  
 A: Relay credentials (`RELAY_TENANT_ID` and `RELAY_TENANT_SECRET`) are generated in the Volteec app (Settings → Help Center → How to Connect → Resources → Relay Credentials) and cannot be generated locally.
 If you do not have them, the backend still works, but push is disabled.
 
+Q: I deleted the Postgres container, but old data is still there.  
+A: Docker Compose uses a named volume (`db_data`), so deleting containers does not remove the database.
+To reset the database completely (this deletes all data):
+```bash
+docker compose down -v
+docker compose up -d db
+docker compose run --rm migrate
+```
+
 ## How to Connect (iOS app)
 
 1. Server URL  
-Use your Mac's LAN IP, not `localhost`. Example:
+Use the backend host's LAN IP (or hostname) that is reachable from your phone on the same network. Example:
 ```
-http://192.168.1.106:8080
+http://<BACKEND_LAN_IP>:8080
 ```
+Note: The app normalizes the URL. If you omit `/v1`, the app will add it automatically.
 
 2. API Token  
 In the app, enter the **exact** `API_TOKEN` value from your backend `.env` in the Token field (Add Server).
-
-2. Token format  
-If the field is labeled `Token Bearer`, paste only the token (no `Bearer` prefix).  
-If the field is labeled `Token`, use:
-```
-Bearer <your_token_here>
-```
-
-3. `/v1` in the URL  
-If the app adds `/v1` automatically, do not include it in the URL.  
-If it does not add it, use:
-```
-http://192.168.1.106:8080/v1
-```
+Paste the token only (no `Bearer` prefix). The app adds `Authorization: Bearer ...` automatically.
 
 ## Usage
 
@@ -259,12 +261,11 @@ Note: API responses currently expose the minimal fields (battery/runtime/load/in
   - Production: set `require` and enable TLS on your Postgres server.
 
 ### Relay (optional)
-If `RELAY_URL` is set, all other `RELAY_*` variables are required:
-- `RELAY_URL`
+If any `RELAY_*` credential is set, all Relay credentials are required:
 - `RELAY_TENANT_ID`
 - `RELAY_TENANT_SECRET`
 - `RELAY_SERVER_ID`
-- `RELAY_ENVIRONMENT` (`sandbox` | `production`, optional)
+Note: Relay URL and environment are fixed in code (internal-only).
 
 ### Backend versioning
 Backend version strings are set at build time (not via `.env`).
