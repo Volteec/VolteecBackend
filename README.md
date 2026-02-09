@@ -1,6 +1,6 @@
 # Volteec Backend
 
-**v1.0.0 (2026-01-31)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
+**v1.0.2 (2026-02-09)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
 
 Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical backend document and Task-DevOps-003.
 
@@ -8,11 +8,18 @@ Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical ba
 
 ## Status
 
-Current version: v1.0.0 (2026-01-31) — Swift 6.2 / Vapor 4.121.1.  
+Current version: v1.0.2 (2026-02-09) — Swift 6.2 / Vapor 4.121.1.  
 Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration.  
 Planned content: SNMP polling (deferred).
 
 ### Patch History
+
+**v1.0.2 (2026-02-09) — onboarding + relay diagnostics + docs alignment**  
+- Relay: fail-loud config validation (UUID checks) + better logging for non-2xx Relay responses (status + request id + redacted body)  
+- Relay: internal-only production target switch (`VOLTEEC_DEPLOYMENT=production`)  
+- Docs: removed hard-coded examples; added Operator guide ("What working means"), Cleanup/Uninstall section, and AI Setup Assistant prompt  
+- Docs: aligned `AUTH_IMPLEMENTATION.md` with `/v1/*` routes and degraded-mode behavior  
+- CI: inject build metadata into Docker images at build time (version/commit/date)  
 
 **v1.0.0 (2026-01-31) — V1 backend release**  
 - NUT TCP client + poller, env config, canonical mapping, offline handling, extended metrics persisted  
@@ -45,6 +52,7 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 1) Clone the repo.
 2) Copy `.env.example` to `.env` and fill required values.
    - Note: `.env.example` starts with a dot, so it may be hidden in Finder. Enable “Show Hidden Files” (Cmd+Shift+.) or copy it from Terminal.
+   - Important: `.env` contains secrets (`API_TOKEN`, `DEVICE_TOKEN_KEY`, `RELAY_TENANT_SECRET`). Treat it like a secret and never commit it.
    - Local Docker: keep `DATABASE_TLS_MODE=disable` (the default Postgres container has TLS off).
    - Production: set `DATABASE_TLS_MODE=require` and enable TLS on your Postgres server.
 3) Run migrations:
@@ -73,6 +81,50 @@ Note: On a fresh setup, Postgres may need a few seconds to initialize. If you se
 ```bash
 docker compose up -d db
 docker compose run --rm migrate
+```
+
+## AI Setup Assistant (Copy/Paste Prompt)
+
+Use this if you want minimal setup friction. It works on macOS/Windows/Linux and does not assume any specific AI tool.
+
+**Prompt (Simple mode):**
+
+```text
+I cloned VolteecBackend and want to run it locally in Docker.
+
+Goal: make it work end-to-end with the Volteec iOS app (URL + Token), and optionally with NUT (UPS polling) and Relay (push).
+
+My inputs:
+1) Relay credentials from the app:
+   RELAY_TENANT_ID=<uuid>
+   RELAY_TENANT_SECRET=<secret>
+2) NUT host:
+   NUT_HOST=<ip_or_host>
+   (Optional) If my NUT server is only reachable via SSH tunnel (upsd listens on 127.0.0.1:3493):
+   SSH_TUNNEL=<ssh_user>@<host>
+
+Please do the following (be explicit and safe):
+- Generate values I should not invent manually:
+  - API_TOKEN (strong random)
+  - DEVICE_TOKEN_KEY (base64, 32 bytes)
+  - RELAY_SERVER_ID (UUID)
+- Produce a complete .env file (no placeholders) that I can paste into VolteecBackend/.env.
+- Give me the exact Docker commands to run (db -> migrate -> app).
+- Provide verification commands and expected outputs:
+  - GET /health, GET /ready
+  - GET /v1/status (with Authorization: Bearer <API_TOKEN>)
+  - GET /v1/ups (with Authorization)
+- If SSH_TUNNEL is provided, output the SSH tunnel command I should run and explain that it must stay running.
+- Do NOT suggest any destructive commands by default (docker compose down -v, docker system prune, etc.). If a full reset is needed, ask me to confirm first.
+- If any required information is missing or ambiguous, say \"I DON'T KNOW\" and ask specific clarifying questions. Do not guess.
+- Do not invent endpoints, environment variables, or commands that are not in this repo's docs. If unsure, ask me to paste the relevant file section.
+- If a step fails, stop and ask me for the exact command output (copy/paste). Do not propose new fixes without data.
+
+Output format:
+1) .env contents
+2) Commands to run (copy/paste)
+3) Verification checklist (OK/FAIL)
+4) What to paste into the iOS app (Server URL + Token)
 ```
 
 ### Required Environment Values
@@ -118,6 +170,36 @@ Example format (placeholders):
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build app
 ```
+
+Stop the dev stack (keeps DB data):
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans
+```
+
+Full reset (deletes Postgres data):
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans
+```
+
+## What "Working" Means (Operator Guide)
+
+This backend has three independent parts. It is possible for one to work while the others are misconfigured.
+
+1) Backend is running (network + process):
+- `GET /health` returns `ok`.
+
+2) Backend is ready (DB + migrations + API token set):
+- `GET /ready` returns `ready`.
+
+3) API auth works (app connection):
+- `GET /v1/status` succeeds with `Authorization: Bearer <API_TOKEN>`.
+
+4) UPS data works (NUT configured + reachable):
+- `GET /v1/ups` returns at least one UPS and `updatedAt` changes over time.
+
+5) Push works (Relay credentials + connectivity):
+- `POST /v1/relay/pair` succeeds.
+- `POST /v1/register-device` succeeds (device token + environment from the app).
 
 ### Health & Readiness
 - `GET /health` — liveness (always available)
@@ -204,9 +286,43 @@ Q: I deleted the Postgres container, but old data is still there.
 A: Docker Compose uses a named volume (`db_data`), so deleting containers does not remove the database.
 To reset the database completely (this deletes all data):
 ```bash
-docker compose down -v
+docker compose down -v --remove-orphans
 docker compose up -d db
 docker compose run --rm migrate
+```
+
+## Uninstall / Cleanup
+
+This removes containers, networks, the persistent Postgres volume, and local secrets.
+
+1) Stop the stack (keeps DB data):
+```bash
+docker compose down --remove-orphans
+```
+
+2) Full reset (deletes Postgres data):
+```bash
+docker compose down -v --remove-orphans
+```
+
+3) Remove local secrets file:
+```bash
+rm -f .env
+```
+
+Optional: stop SSH tunnel (if used for NUT):
+- The SSH tunnel is a separate process. Stop it manually (Ctrl+C).
+
+Optional: remove images:
+```bash
+docker image rm ghcr.io/volteec/volteec-backend:latest
+```
+
+Optional (aggressive, global): prune Docker resources:
+- Warning: this may delete unrelated images/volumes used by other projects.
+```bash
+docker system prune -af
+docker volume prune -f
 ```
 
 ## How to Connect (iOS app)
@@ -328,7 +444,7 @@ Sources/VolteecBackend/
 
 ## Version
 
-- **Current**: v1.0.0 (2026-01-31)
+- **Current**: v1.0.2 (2026-02-09)
 - **Platform**: Linux (Docker)
 - **Swift**: 6.2
 - **Vapor**: 4.121.1
@@ -340,3 +456,9 @@ Not configured.
 ## Compatibility
 - VolteecShared version is pinned in `Package.swift` (`from: 1.0.0`).
 - API versioning is `/v1/*` with response `apiVersion = "1.0"`.
+
+## Support & Contact
+
+- Support (setup/usage issues): support@volteec.com
+- General contact: contact@volteec.com
+- Security vulnerabilities: security@volteec.com (see `SECURITY.md`)

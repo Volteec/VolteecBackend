@@ -3,6 +3,7 @@ name: build-and-push-backend
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*" ]
   workflow_dispatch:
 
 permissions:
@@ -15,6 +16,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Compute build metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${ref}" == v* ]]; then
+            version="${ref#v}"
+          else
+            # Branch builds: embed the commit for traceability without implying a release version.
+            # Note: Docker image tags cannot contain '+', so use '-' here.
+            version="0.0.0-${GITHUB_SHA::7}"
+          fi
+          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "build_date=${build_date}" >> "${GITHUB_OUTPUT}"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -35,6 +53,11 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          build-args: |
+            BACKEND_SOFTWARE_VERSION=${{ steps.meta.outputs.version }}
+            BACKEND_COMMIT=${{ github.sha }}
+            BACKEND_BUILD_DATE=${{ steps.meta.outputs.build_date }}
           tags: |
             ghcr.io/volteec/volteec-backend:latest
             ghcr.io/volteec/volteec-backend:${{ github.sha }}
+            ghcr.io/volteec/volteec-backend:${{ steps.meta.outputs.version }}
