@@ -156,9 +156,8 @@ Relay credentials are issued by Volteec. If you do not have them, push notificat
 Relay credentials are generated in the Volteec app (Settings → Help Center → How to Connect → Resources → Relay Credentials) and must be copied into the backend `.env`.
 
 Internal deployments:
-- If you run the backend in production, set `VOLTEEC_DEPLOYMENT=production` in the deployment environment.
-  This switches Relay to production (`https://api.volteec.com/v1`, `environment=production`).
-  Do not add this to `.env.example` or public setup steps (local/self-hosted uses sandbox by default).
+- `VOLTEEC_DEPLOYMENT=production` targets Relay production (`https://api.volteec.com/v1`, `environment=production`).
+- If you need sandbox/dev Relay for local testing, unset `VOLTEEC_DEPLOYMENT` (or set any value other than `production`).
 
 Example format (placeholders):
 - `RELAY_TENANT_ID=<uuid>`
