@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.0.3 - 2026-02-11
+- Database: added `AddUpsAliasToDevice` migration to align `devices` schema with `Device` model
+- Tests: updated `test-auth.sh` to use `/v1/*` routes and include `apiVersion` for register-device
+- Docs: fixed `VolteecShared` pin in README (`from: 1.0.2`)
+- Docker: pinned public compose image from `latest` to explicit release tag (`v1.0.3`)
+- CI: added smoke workflow for fresh DB setup (`db -> migrate -> app -> register-device`)
+
 ## v1.0.2 - 2026-02-09
 - Relay: fail-loud config validation (UUID checks) + better logging for non-2xx Relay responses (status + request id + redacted body)
 - Relay: internal-only production target switch (`VOLTEEC_DEPLOYMENT=production`)

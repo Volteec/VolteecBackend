@@ -1,6 +1,6 @@
 # Volteec Backend
 
-**v1.0.2 (2026-02-09)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
+**v1.0.3 (2026-02-11)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
 
 Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical backend document and Task-DevOps-003.
 
@@ -8,11 +8,18 @@ Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical ba
 
 ## Status
 
-Current version: v1.0.2 (2026-02-09) — Swift 6.2 / Vapor 4.121.1.  
+Current version: v1.0.3 (2026-02-11) — Swift 6.2 / Vapor 4.121.1.  
 Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration.  
 Planned content: SNMP polling (deferred).
 
 ### Patch History
+
+**v1.0.3 (2026-02-11) — setup reliability + schema/docs/test alignment**  
+- Migrations: added `AddUpsAliasToDevice` to align DB schema with `Device` model  
+- Tests: updated `test-auth.sh` to `/v1/*` routes and `apiVersion` payload for `register-device`  
+- Docs: fixed `VolteecShared` pinned version note (`from: 1.0.2`)  
+- Docker: pinned public runtime image to explicit release tag `v1.0.3` in compose docs  
+- CI: added smoke test workflow (`fresh DB -> migrate -> register-device`)  
 
 **v1.0.2 (2026-02-09) — onboarding + relay diagnostics + docs alignment**  
 - Relay: fail-loud config validation (UUID checks) + better logging for non-2xx Relay responses (status + request id + redacted body)  
@@ -63,7 +70,7 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 4) Start backend:
    - `docker compose up app`
 
-This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:latest`) by default.
+This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:v1.0.3`) by default.
 
 ### Public Docker Flow (Recommended)
 
@@ -314,7 +321,7 @@ Optional: stop SSH tunnel (if used for NUT):
 
 Optional: remove images:
 ```bash
-docker image rm ghcr.io/volteec/volteec-backend:latest
+docker image rm ghcr.io/volteec/volteec-backend:v1.0.3
 ```
 
 Optional (aggressive, global): prune Docker resources:
@@ -443,17 +450,19 @@ Sources/VolteecBackend/
 
 ## Version
 
-- **Current**: v1.0.2 (2026-02-09)
+- **Current**: v1.0.3 (2026-02-11)
 - **Platform**: Linux (Docker)
 - **Swift**: 6.2
 - **Vapor**: 4.121.1
 
 ## Build Status
 
-Not configured.
+GitHub Actions workflows are configured:
+- `smoke-compose` — validates fresh Docker setup (`db -> migrate -> app -> register-device`) on `push` and `pull_request`.
+- `build-and-push-backend` — builds and publishes GHCR images on `main` and `v*` tags.
 
 ## Compatibility
-- VolteecShared version is pinned in `Package.swift` (`from: 1.0.0`).
+- VolteecShared version is pinned in `Package.swift` (`from: 1.0.2`).
 - API versioning is `/v1/*` with response `apiVersion = "1.0"`.
 
 ## Support & Contact

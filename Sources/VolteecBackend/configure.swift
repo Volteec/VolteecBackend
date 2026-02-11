@@ -64,6 +64,7 @@ public func configure(_ app: Application) async throws {
     // register migrations
     app.migrations.add(CreateUPS())
     app.migrations.add(CreateDevice())
+    app.migrations.add(AddUpsAliasToDevice())
     app.migrations.add(EnforceLowercaseUPSId())
     app.migrations.add(AddNUTFieldsToUPS())
     app.migrations.add(AddTokenHashToDevice())

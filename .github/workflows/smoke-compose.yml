@@ -1,0 +1,85 @@
+name: smoke-compose
+
+on:
+  pull_request:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare .env for smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          sed -i 's|^API_TOKEN=.*|API_TOKEN=smoke_test_api_token_1234567890|' .env
+          sed -i 's|^DEVICE_TOKEN_KEY=.*|DEVICE_TOKEN_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=|' .env
+          sed -i 's|^VOLTEEC_DEPLOYMENT=.*|VOLTEEC_DEPLOYMENT=|' .env
+          sed -i 's|^RELAY_TENANT_ID=.*|RELAY_TENANT_ID=|' .env
+          sed -i 's|^RELAY_TENANT_SECRET=.*|RELAY_TENANT_SECRET=|' .env
+          sed -i 's|^RELAY_SERVER_ID=.*|RELAY_SERVER_ID=|' .env
+
+      - name: Build and start DB
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+
+      - name: Run migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm migrate
+
+      - name: Start app
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d app
+
+      - name: Wait for ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if [[ "$(curl -fsS http://localhost:8080/ready || true)" == "ready" ]]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Service did not become ready within timeout"
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail=200 app db
+          exit 1
+
+      - name: Verify status and register-device
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -H "Authorization: Bearer smoke_test_api_token_1234567890" \
+            http://localhost:8080/v1/status >/dev/null
+          status_code="$(curl -s -o /tmp/register.out -w '%{http_code}' \
+            -X POST \
+            -H "Authorization: Bearer smoke_test_api_token_1234567890" \
+            -H "Content-Type: application/json" \
+            -d '{"apiVersion":"1.0","upsId":"smoke_ups","deviceToken":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","environment":"sandbox"}' \
+            http://localhost:8080/v1/register-device)"
+          if [[ "${status_code}" != "201" && "${status_code}" != "200" ]]; then
+            echo "Unexpected register-device status: ${status_code}"
+            cat /tmp/register.out
+            exit 1
+          fi
+
+      - name: Dump logs on failure
+        if: failure()
+        shell: bash
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail=200 app db
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans

@@ -14,7 +14,7 @@ echo ""
 # Test 1: Missing Authorization header
 echo "Test 1: Request without Authorization header"
 echo "Expected: 401 Unauthorized"
-RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "$BASE_URL/ups")
+RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "$BASE_URL/v1/ups")
 HTTP_STATUS=$(echo "$RESPONSE" | grep HTTP_STATUS | cut -d: -f2)
 BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS/d')
 echo "Status: $HTTP_STATUS"
@@ -24,7 +24,7 @@ echo ""
 # Test 2: Invalid token
 echo "Test 2: Request with invalid token"
 echo "Expected: 401 Unauthorized"
-RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -H "Authorization: Bearer invalid_token" "$BASE_URL/ups")
+RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -H "Authorization: Bearer invalid_token" "$BASE_URL/v1/ups")
 HTTP_STATUS=$(echo "$RESPONSE" | grep HTTP_STATUS | cut -d: -f2)
 BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS/d')
 echo "Status: $HTTP_STATUS"
@@ -34,7 +34,7 @@ echo ""
 # Test 3: Valid token
 echo "Test 3: Request with valid token"
 echo "Expected: 200 OK (or 404/empty array if no data)"
-RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -H "Authorization: Bearer $API_TOKEN" "$BASE_URL/ups")
+RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -H "Authorization: Bearer $API_TOKEN" "$BASE_URL/v1/ups")
 HTTP_STATUS=$(echo "$RESPONSE" | grep HTTP_STATUS | cut -d: -f2)
 BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS/d')
 echo "Status: $HTTP_STATUS"
@@ -48,8 +48,8 @@ RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
   -X POST \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"upsId":"TEST_UPS","deviceToken":"test_device_123","environment":"sandbox"}' \
-  "$BASE_URL/register-device")
+  -d '{"apiVersion":"1.0","upsId":"test_ups","deviceToken":"test_device_123","environment":"sandbox"}' \
+  "$BASE_URL/v1/register-device")
 HTTP_STATUS=$(echo "$RESPONSE" | grep HTTP_STATUS | cut -d: -f2)
 BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS/d')
 echo "Status: $HTTP_STATUS"
