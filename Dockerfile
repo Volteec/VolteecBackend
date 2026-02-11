@@ -3,11 +3,12 @@
 # ================================
 FROM swift:6.2-noble AS build
 
-# Install OS updates
+# Install build dependencies
 RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
     && apt-get -q update \
-    && apt-get -q dist-upgrade -y \
-    && apt-get install -y libjemalloc-dev
+    && apt-get -q install -y --no-install-recommends \
+      libjemalloc-dev \
+    && rm -r /var/lib/apt/lists/*
 
 # Set up a build area
 WORKDIR /build
@@ -72,11 +73,10 @@ RUN [ -d /build/Resources ] && { mv /build/Resources ./Resources && chmod -R a-w
 # ================================
 FROM ubuntu:noble
 
-# Make sure all system packages are up to date, and install only essential packages.
+# Install runtime dependencies
 RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
     && apt-get -q update \
-    && apt-get -q dist-upgrade -y \
-    && apt-get -q install -y \
+    && apt-get -q install -y --no-install-recommends \
       libjemalloc2 \
       ca-certificates \
       tzdata \

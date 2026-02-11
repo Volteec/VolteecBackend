@@ -1,6 +1,6 @@
 # Volteec Backend
 
-**v1.0.3 (2026-02-11)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
+**v1.0.4 (2026-02-11)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
 
 Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical backend document and Task-DevOps-003.
 
@@ -8,11 +8,20 @@ Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical ba
 
 ## Status
 
-Current version: v1.0.3 (2026-02-11) — Swift 6.2 / Vapor 4.121.1.  
+Current version: v1.0.4 (2026-02-11) — Swift 6.2 / Vapor 4.121.1.  
 Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration.  
 Planned content: SNMP polling (deferred).
 
 ### Patch History
+
+**v1.0.4 (2026-02-11) — CI/deploy build-time optimization hardening**  
+- CI: added `concurrency` + `cancel-in-progress` to avoid duplicate long builds for the same SHA/ref  
+- CI: added `timeout-minutes` for multi-arch build safety  
+- CI: enabled Buildx cache (`cache-from` / `cache-to`, GHA scope `backend-multiarch`)  
+- CI: upgraded `docker/build-push-action` from `v5` to `v6`  
+- Docker: removed `dist-upgrade`; switched apt installs to `--no-install-recommends` for faster, more stable image builds  
+- Docker context: expanded `.dockerignore` to exclude non-runtime files from CI build context  
+- Relay logging: on 2xx `/event`, backend now parses `sentCount` and logs semantic outcome (`delivered > 0` vs `delivered = 0`) with relay metadata for operator clarity  
 
 **v1.0.3 (2026-02-11) — setup reliability + schema/docs/test alignment**  
 - Migrations: added `AddUpsAliasToDevice` to align DB schema with `Device` model  
@@ -70,15 +79,41 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 4) Start backend:
    - `docker compose up app`
 
-This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:v1.0.3`) by default.
+This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:v1.0.4`) by default.
+
+### Release Readiness (Public Image)
+
+Use the public image flow only when the release image is confirmed available.
+
+Preflight checks before running public commands:
+- Check GitHub Actions for the release tag: `.github/workflows/docker-publish.yml` must be `success`.
+- Confirm GHCR manifest exists for the tag:
+  - `docker manifest inspect ghcr.io/volteec/volteec-backend:v1.0.4 >/dev/null`
+  - If this fails with `manifest ... not found`, the image is not yet available.
+
+Known timing window:
+- After pushing a tag, GHCR availability can lag behind Actions by several minutes.
+- During this window, `manifest not found` is expected behavior (not operator error).
+
+### Public vs Dev Flow
+
+| Situation | Recommended flow |
+|---|---|
+| Release tag build is `success` and GHCR tag exists | Public flow |
+| Release workflow is `in progress` | Dev flow |
+| `manifest ... not found` for target tag | Dev flow |
+| Local debugging or source-level changes | Dev flow |
 
 ### Public Docker Flow (Recommended)
+
+Use this flow only when the release image tag is available in GHCR.
 
 ```bash
 git clone https://github.com/Volteec/VolteecBackend
 cd VolteecBackend
 cp .env.example .env
 # edit .env (API_TOKEN, DEVICE_TOKEN_KEY, Relay + optional NUT, DATABASE_TLS_MODE)
+docker compose up -d db
 docker compose run --rm migrate
 docker compose up app
 ```
@@ -173,7 +208,13 @@ Example format (placeholders):
 
 ### Local Development (Build from Source)
 
+Use one compose context consistently. Do not mix contexts between `migrate` and `app`.
+
+Dev flow (source build) command block:
+
 ```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm migrate
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build app
 ```
 
@@ -206,6 +247,13 @@ This backend has three independent parts. It is possible for one to work while t
 5) Push works (Relay credentials + connectivity):
 - `POST /v1/relay/pair` succeeds.
 - `POST /v1/register-device` succeeds (device token + environment from the app).
+
+### Quick Troubleshooting (Operator)
+
+| Symptom | Likely cause | Action |
+|---|---|---|
+| `manifest for ghcr.io/volteec/volteec-backend:<tag> not found` | Release image not yet published or still propagating | Check Actions status for tag. If not `success`, wait. If urgent, use Dev flow. |
+| `relation "ups" does not exist` | `migrate` and `app` were run in different compose contexts | Re-run `db -> migrate -> app` in one consistent context (Public or Dev, not mixed). |
 
 ### Health & Readiness
 - `GET /health` — liveness (always available)
@@ -321,7 +369,7 @@ Optional: stop SSH tunnel (if used for NUT):
 
 Optional: remove images:
 ```bash
-docker image rm ghcr.io/volteec/volteec-backend:v1.0.3
+docker image rm ghcr.io/volteec/volteec-backend:v1.0.4
 ```
 
 Optional (aggressive, global): prune Docker resources:
@@ -330,6 +378,21 @@ Optional (aggressive, global): prune Docker resources:
 docker system prune -af
 docker volume prune -f
 ```
+
+## Release Discipline (Maintainers)
+
+- Announce a public release tag only after:
+  - Tag workflow is `success`, and
+  - GHCR tag is inspectable (`docker manifest inspect` succeeds).
+- Avoid pinning docs to a new tag before the image is available in GHCR.
+
+## Onboarding Support Template
+
+When reporting setup issues, include:
+- Commands executed (`migrate` and `app`)
+- Workflow status for the target tag/build
+- Exact error text (full line)
+- Chosen flow (Public or Dev) and why
 
 ## How to Connect (iOS app)
 
@@ -450,7 +513,7 @@ Sources/VolteecBackend/
 
 ## Version
 
-- **Current**: v1.0.3 (2026-02-11)
+- **Current**: v1.0.4 (2026-02-11)
 - **Platform**: Linux (Docker)
 - **Swift**: 6.2
 - **Vapor**: 4.121.1
