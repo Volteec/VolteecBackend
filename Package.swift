@@ -35,6 +35,7 @@ let package = Package(
                 .target(name: "VolteecBackend"),
                 .product(name: "VaporTesting", package: "vapor"),
             ],
+            path: "Tests/VolteecBackendTests",
             swiftSettings: swiftSettings
         )
     ]
