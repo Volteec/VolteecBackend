@@ -6,6 +6,10 @@ on:
     tags: [ "v*" ]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
@@ -13,6 +17,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,11 +53,13 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          cache-from: type=gha,scope=backend-multiarch
+          cache-to: type=gha,scope=backend-multiarch,mode=max
           build-args: |
             BACKEND_SOFTWARE_VERSION=${{ steps.meta.outputs.version }}
             BACKEND_COMMIT=${{ github.sha }}

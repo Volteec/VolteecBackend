@@ -131,7 +131,31 @@ actor RelayClient {
 
         // Check response
         if response.status.code >= 200 && response.status.code < 300 {
-            logger.debug("Successfully sent event to relay for UPS \(upsId)")
+            let metadata = relayEventMetadata(
+                eventId: eventId,
+                upsId: upsId,
+                eventType: eventType,
+                environment: environment,
+                response: response
+            )
+
+            if let relayEventResponse = decodeRelayEventResponse(from: response) {
+                var metadataWithCount = metadata
+                metadataWithCount["relaySentCount"] = .stringConvertible(relayEventResponse.sentCount)
+                if relayEventResponse.sentCount > 0 {
+                    logger.debug("Relay accepted event and delivered notifications", metadata: metadataWithCount)
+                } else {
+                    logger.info(
+                        "Relay accepted event but delivered to 0 devices (possible idempotent duplicate or no eligible tokens).",
+                        metadata: metadataWithCount
+                    )
+                }
+            } else {
+                logger.info(
+                    "Relay accepted event but response payload did not include a parseable sentCount.",
+                    metadata: metadata
+                )
+            }
         } else {
             logger.error(
                 "Relay returned error status \(response.status.code) for UPS \(upsId)",
@@ -346,6 +370,44 @@ actor RelayClient {
         return metadata
     }
 
+    private func relayEventMetadata(
+        eventId: String,
+        upsId: String,
+        eventType: String,
+        environment: String,
+        response: ClientResponse
+    ) -> Logger.Metadata {
+        var metadata: Logger.Metadata = [
+            "eventId": .string(eventId),
+            "upsId": .string(upsId),
+            "eventType": .string(eventType),
+            "environment": .string(environment),
+            "tenantId": .string(config.tenantId),
+            "serverId": .string(config.serverId),
+            "relayStatus": .stringConvertible(response.status.code)
+        ]
+
+        let body = sanitizedResponseBody(from: response, limitBytes: Self.maxLoggedResponseBodyBytes)
+        if !body.isEmpty {
+            metadata["relayBody"] = .string(body)
+        }
+        return metadata
+    }
+
+    private func decodeRelayEventResponse(from response: ClientResponse) -> RelayEventResponse? {
+        guard let buffer = response.body else {
+            return nil
+        }
+
+        let raw = buffer.getString(at: buffer.readerIndex, length: buffer.readableBytes)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let raw, !raw.isEmpty, let data = raw.data(using: .utf8) else {
+            return nil
+        }
+
+        return try? JSONDecoder().decode(RelayEventResponse.self, from: data)
+    }
+
     private func sanitizedResponseBody(from response: ClientResponse, limitBytes: Int) -> String {
         guard let buffer = response.body else {
             return ""
@@ -442,6 +504,11 @@ struct RelayPairRequest: Content, Sendable {
     let tenantId: String
     let pairCode: String
     let timestamp: Int64
+}
+
+struct RelayEventResponse: Decodable, Sendable {
+    let success: Bool
+    let sentCount: Int
 }
 
 // MARK: - Errors

@@ -1,2 +1,12 @@
 .build/
 .swiftpm/
+.git/
+.github/
+.vscode/
+Tests/
+docker-compose*.yml
+*.md
+LICENSE
+.env*
+.gitignore
+.DS_Store

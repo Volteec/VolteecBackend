@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.0.4 - 2026-02-11
+- CI: added workflow `concurrency` with `cancel-in-progress` to deduplicate long runs for the same SHA/ref
+- CI: added `timeout-minutes` to build job for safer multi-arch execution
+- CI: enabled Buildx cache (`cache-from` / `cache-to`) for GH Actions
+- CI: upgraded `docker/build-push-action` from `v5` to `v6`
+- Docker: removed `dist-upgrade`; switched apt installs to `--no-install-recommends` in build/runtime stages
+- Docker context: expanded `.dockerignore` to reduce CI build context noise
+- Relay logs: on successful `/event` responses, parse `sentCount` and log semantic outcome for `fan-out > 0` vs `fan-out = 0` with event metadata
+
 ## v1.0.3 - 2026-02-11
 - Database: added `AddUpsAliasToDevice` migration to align `devices` schema with `Device` model
 - Tests: updated `test-auth.sh` to use `/v1/*` routes and include `apiVersion` for register-device
