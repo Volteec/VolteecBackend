@@ -3,6 +3,7 @@
 .git/
 .github/
 .vscode/
+Tests/
 docker-compose*.yml
 *.md
 LICENSE
