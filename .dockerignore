@@ -3,7 +3,9 @@
 .git/
 .github/
 .vscode/
-Tests/
+Tests/*
+!Tests/VolteecBackendTests/
+!Tests/VolteecBackendTests/**
 docker-compose*.yml
 *.md
 LICENSE
