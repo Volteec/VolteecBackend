@@ -46,7 +46,7 @@ EOF
 
 # Build the application, with optimizations, with static linking, and using jemalloc
 # N.B.: The static version of jemalloc is incompatible with the static Swift runtime.
-RUN --mount=type=cache,target=/build/.build \
+RUN --mount=type=cache,target=/build/.build,id=spm-build-${TARGETPLATFORM},sharing=locked \
     swift build -c release \
         --product VolteecBackend \
         --static-swift-stdlib \
