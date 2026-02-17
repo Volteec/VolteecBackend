@@ -4,8 +4,8 @@ import Foundation
 /// Relay configuration loaded from environment variables
 /// Returns nil if Relay is not configured, enabling graceful degradation.
 struct RelayConfig {
-    // Internal-only: Relay base URL and environment are intentionally NOT configurable
-    // via .env to prevent accidental misconfiguration.
+    // Default Relay target is selected by deployment mode.
+    // For local integration tests, RELAY_URL_OVERRIDE can point to a custom relay.
     //
     // For internal production deployments, operators can set:
     //   VOLTEEC_DEPLOYMENT=production
@@ -32,6 +32,36 @@ struct RelayConfig {
         }
     }
 
+    private static func resolvedBaseURL() throws -> String {
+        guard let overrideRaw = Environment.get("RELAY_URL_OVERRIDE")?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !overrideRaw.isEmpty else {
+            return fixedBaseURL
+        }
+
+        guard var components = URLComponents(string: overrideRaw),
+              let scheme = components.scheme?.lowercased(),
+              (scheme == "http" || scheme == "https"),
+              let host = components.host,
+              !host.isEmpty else {
+            throw ConfigError.invalidRelayURLOverride(overrideRaw)
+        }
+
+        if components.path.isEmpty || components.path == "/" {
+            components.path = "/v1"
+        }
+
+        while components.path.count > 1, components.path.hasSuffix("/") {
+            components.path.removeLast()
+        }
+
+        guard let normalized = components.url?.absoluteString else {
+            throw ConfigError.invalidRelayURLOverride(overrideRaw)
+        }
+
+        return normalized
+    }
+
     private static var fixedEnvironment: String {
         switch resolvedTarget() {
         case .sandbox:
@@ -54,6 +84,7 @@ struct RelayConfig {
         case missingServerId
         case invalidTenantId(String)
         case invalidServerId(String)
+        case invalidRelayURLOverride(String)
         case invalidURL(String)
 
         var description: String {
@@ -66,6 +97,8 @@ struct RelayConfig {
                 return "RELAY_SERVER_ID environment variable is required"
             case .invalidTenantId(let value):
                 return "Invalid RELAY_TENANT_ID (expected UUID): \(value)"
+            case .invalidRelayURLOverride(let value):
+                return "Invalid RELAY_URL_OVERRIDE: \(value). Expected absolute http(s) URL."
             case .invalidURL(let url):
                 return "Invalid Relay base URL: \(url)"
             case .invalidServerId(let value):
@@ -102,7 +135,7 @@ struct RelayConfig {
         }
 
         let config = RelayConfig(
-            url: Self.fixedBaseURL,
+            url: try Self.resolvedBaseURL(),
             tenantId: tenantId,
             tenantSecret: tenantSecret,
             serverId: serverId,

@@ -1,6 +1,6 @@
 # Volteec Backend
 
-**v1.0.4 (2026-02-11)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
+**v1.0.6 (2026-02-17)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
 
 Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical backend document and Task-DevOps-003.
 
@@ -8,11 +8,15 @@ Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical ba
 
 ## Status
 
-Current version: v1.0.4 (2026-02-11) — Swift 6.2 / Vapor 4.121.1.  
+Current version: v1.0.6 (2026-02-17) — Swift 6.2 / Vapor 4.121.1.  
 Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration.  
 Planned content: SNMP polling (deferred).
 
 ### Patch History
+
+**v1.0.6 (2026-02-17) — Task-027 multi-device UPS delivery fix (broadcast -> relay fanout)**  
+- Relay integration: `ups_status_change` and `battery_low` are submitted as a single **broadcast** event (`installationId=nil`) to avoid per-installation suppression by relay debounce and ensure consistent delivery across multiple devices.  
+- NUT poller: removed targeted per-installation UPS event fanout from the backend; relay remains the fanout + per-device filter of record (hidden UPS is applied per installation in relay).  
 
 **v1.0.4 (2026-02-11) — CI/deploy build-time optimization hardening**  
 - CI: added `concurrency` + `cancel-in-progress` to avoid duplicate long builds for the same SHA/ref  
@@ -79,7 +83,7 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 4) Start backend:
    - `docker compose up app`
 
-This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:v1.0.4`) by default.
+This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:v1.0.6`) by default.
 
 ### Release Readiness (Public Image)
 
@@ -88,7 +92,7 @@ Use the public image flow only when the release image is confirmed available.
 Preflight checks before running public commands:
 - Check GitHub Actions for the release tag: `.github/workflows/docker-publish.yml` must be `success`.
 - Confirm GHCR manifest exists for the tag:
-  - `docker manifest inspect ghcr.io/volteec/volteec-backend:v1.0.4 >/dev/null`
+  - `docker manifest inspect ghcr.io/volteec/volteec-backend:v1.0.6 >/dev/null`
   - If this fails with `manifest ... not found`, the image is not yet available.
 
 Known timing window:
@@ -190,7 +194,7 @@ openssl rand -base64 32 # DEVICE_TOKEN_KEY
 ### Relay (Push Notifications)
 
 Push notifications require Relay credentials. If Relay credentials are not set, push is disabled.
-Relay URL and environment are internal-only and are fixed in code (not configurable via `.env`).
+Relay environment is selected by deployment mode. Relay base URL can be overridden for local integration tests.
 
 Relay credentials are issued by Volteec. If you do not have them, push notifications will not work.
 `RELAY_TENANT_ID` must be a UUID (as provided by the app).
@@ -200,11 +204,13 @@ Relay credentials are generated in the Volteec app (Settings → Help Center →
 Internal deployments:
 - `VOLTEEC_DEPLOYMENT=production` targets Relay production (`https://api.volteec.com/v1`, `environment=production`).
 - If you need sandbox/dev Relay for local testing, unset `VOLTEEC_DEPLOYMENT` (or set any value other than `production`).
+- Optional local override: `RELAY_URL_OVERRIDE=http://<host>:<port>/v1` (or `http://<host>:<port>`, normalized to `/v1`).
 
 Example format (placeholders):
 - `RELAY_TENANT_ID=<uuid>`
 - `RELAY_TENANT_SECRET=<secret>`
 - `RELAY_SERVER_ID=<uuid>`
+- `RELAY_URL_OVERRIDE=http://127.0.0.1:8070/v1` (optional, tests only)
 
 ### Local Development (Build from Source)
 
@@ -369,7 +375,7 @@ Optional: stop SSH tunnel (if used for NUT):
 
 Optional: remove images:
 ```bash
-docker image rm ghcr.io/volteec/volteec-backend:v1.0.4
+docker image rm ghcr.io/volteec/volteec-backend:v1.0.6
 ```
 
 Optional (aggressive, global): prune Docker resources:
@@ -450,7 +456,10 @@ If any `RELAY_*` credential is set, all Relay credentials are required:
 - `RELAY_TENANT_ID`
 - `RELAY_TENANT_SECRET`
 - `RELAY_SERVER_ID`
-Note: Relay URL and environment are fixed in code (internal-only).
+- `RELAY_URL_OVERRIDE` (optional; absolute `http(s)` URL for local/test relay)
+Default target:
+- `VOLTEEC_DEPLOYMENT=production` -> `https://api.volteec.com/v1`
+- unset/other -> `https://dev-api.volteec.com/v1`
 
 ### Backend versioning
 Backend version strings are set at build time (not via `.env`).
@@ -513,7 +522,7 @@ Sources/VolteecBackend/
 
 ## Version
 
-- **Current**: v1.0.4 (2026-02-11)
+- **Current**: v1.0.6 (2026-02-17)
 - **Platform**: Linux (Docker)
 - **Swift**: 6.2
 - **Vapor**: 4.121.1

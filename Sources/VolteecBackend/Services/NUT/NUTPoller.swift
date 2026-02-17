@@ -432,9 +432,9 @@ actor NUTPoller {
         let timestamp = Int64(Date().timeIntervalSince1970)
 
         let eventType = hasLowBattery ? "battery_low" : "ups_status_change"
-
-        logger.debug("Sending \(eventType) via relay for UPS \(upsId)")
-
+        // Enterprise-style: backend publishes a single broadcast event.
+        // Relay is responsible for per-device fanout and applying per-installation filters (e.g. hidden UPS).
+        logger.debug("Sending \(eventType) via relay broadcast for UPS \(upsId)")
         await relayClient.sendEvent(
             eventType: eventType,
             status: newStatus.rawValue,

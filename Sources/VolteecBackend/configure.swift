@@ -68,6 +68,9 @@ public func configure(_ app: Application) async throws {
     app.migrations.add(EnforceLowercaseUPSId())
     app.migrations.add(AddNUTFieldsToUPS())
     app.migrations.add(AddTokenHashToDevice())
+    app.migrations.add(AddInstallationIdToDevice())
+    app.migrations.add(AddServerAndHiddenToDevice())
+    app.migrations.add(FixDeviceTokenHashIndex())
 
     // Create shared UPS event bus for SSE subscriptions
     let eventBus = UPSEventBus()
