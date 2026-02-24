@@ -1,6 +1,6 @@
 # Volteec Backend
 
-**v1.0.6 (2026-02-17)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
+**v1.0.7 (2026-02-23)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
 
 Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical backend document and Task-DevOps-003.
 
@@ -8,11 +8,15 @@ Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical ba
 
 ## Status
 
-Current version: v1.0.6 (2026-02-17) — Swift 6.2 / Vapor 4.121.1.  
+Current version: v1.0.7 (2026-02-23) — Swift 6.2 / Vapor 4.121.1.  
 Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration.  
 Planned content: SNMP polling (deferred).
 
 ### Patch History
+
+**v1.0.7 (2026-02-23) — Docker Compose reliability hardening (db restart + healthcheck)**  
+- Docker Compose: add `restart: unless-stopped` to `app` and `db` to ensure clean boot after reboot.  
+- Docker Compose: add DB `healthcheck` and gate `app` startup on `service_healthy` for predictable readiness.  
 
 **v1.0.6 (2026-02-17) — Task-027 multi-device UPS delivery fix (broadcast -> relay fanout)**  
 - Relay integration: `ups_status_change` and `battery_low` are submitted as a single **broadcast** event (`installationId=nil`) to avoid per-installation suppression by relay debounce and ensure consistent delivery across multiple devices.  
@@ -83,7 +87,7 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 4) Start backend:
    - `docker compose up app`
 
-This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:v1.0.6`) by default.
+This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:v1.0.7`) by default.
 
 ### Release Readiness (Public Image)
 
@@ -92,7 +96,7 @@ Use the public image flow only when the release image is confirmed available.
 Preflight checks before running public commands:
 - Check GitHub Actions for the release tag: `.github/workflows/docker-publish.yml` must be `success`.
 - Confirm GHCR manifest exists for the tag:
-  - `docker manifest inspect ghcr.io/volteec/volteec-backend:v1.0.6 >/dev/null`
+  - `docker manifest inspect ghcr.io/volteec/volteec-backend:v1.0.7 >/dev/null`
   - If this fails with `manifest ... not found`, the image is not yet available.
 
 Known timing window:
@@ -375,7 +379,7 @@ Optional: stop SSH tunnel (if used for NUT):
 
 Optional: remove images:
 ```bash
-docker image rm ghcr.io/volteec/volteec-backend:v1.0.6
+docker image rm ghcr.io/volteec/volteec-backend:v1.0.7
 ```
 
 Optional (aggressive, global): prune Docker resources:
@@ -522,7 +526,7 @@ Sources/VolteecBackend/
 
 ## Version
 
-- **Current**: v1.0.6 (2026-02-17)
+- **Current**: v1.0.7 (2026-02-23)
 - **Platform**: Linux (Docker)
 - **Swift**: 6.2
 - **Vapor**: 4.121.1
