@@ -98,6 +98,10 @@ Preflight checks before running public commands:
 - Confirm GHCR manifest exists for the tag:
   - `docker manifest inspect ghcr.io/volteec/volteec-backend:v1.0.7 >/dev/null`
   - If this fails with `manifest ... not found`, the image is not yet available.
+- Release publishing is triggered only by:
+  - Git tags matching `v*`
+  - `workflow_dispatch`
+- Normal pushes to `main` do not publish GHCR images.
 
 Known timing window:
 - After pushing a tag, GHCR availability can lag behind Actions by several minutes.
@@ -560,7 +564,10 @@ Sources/VolteecBackend/
 
 GitHub Actions workflows are configured:
 - `smoke-compose` — validates fresh Docker setup (`db -> migrate -> app -> register-device`) on `push` and `pull_request`.
-- `build-and-push-backend` — builds and publishes GHCR images on `main` and `v*` tags.
+- `build-and-push-backend` — builds and publishes GHCR images only on `v*` tags and `workflow_dispatch`.
+  - Runner: self-hosted `macOS` + `ARM64`
+  - Scope: release/manual publish only
+  - Security posture: not used for `pull_request` or normal `push` verification in this public repo
 
 ## Compatibility
 - VolteecShared version is pinned in `Package.swift` (`from: 1.0.2`).
