@@ -25,14 +25,17 @@ struct StatusController: RouteCollection {
         // 1. Get Version Info from Build
         let protocolVersion = BuildInfo.protocolVersion
         let softwareVersion = BuildInfo.softwareVersion
-        
+
         // 2. Get Dynamic Compatibility State
         let compatibilityState = req.application.updateChecker.getCurrentState()
-        
+        let relayProtocolSnapshot = req.application.updateChecker.getCachedRelayProtocolSnapshot()
+
         return ServerStatusResponse(
             version: softwareVersion,
             protocolVersion: protocolVersion,
-            compatibility: compatibilityState
+            compatibility: compatibilityState,
+            relayCurrentProtocolVersion: relayProtocolSnapshot?.current,
+            relayMinProtocolVersion: relayProtocolSnapshot?.min
         )
     }
     

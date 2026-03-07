@@ -4,10 +4,19 @@ import VolteecShared
 /// Service responsible for checking protocol compatibility with the Relay.
 struct UpdateCheckerService {
     let app: Application
+
+    struct RelayProtocolSnapshot: Sendable {
+        let current: String
+        let min: String
+    }
     
     /// Storage key for caching the compatibility state
     struct CompatibilityCacheKey: StorageKey {
         typealias Value = CompatibilityState
+    }
+
+    struct RelayProtocolSnapshotKey: StorageKey {
+        typealias Value = RelayProtocolSnapshot
     }
     
     /// Storage key for caching the last 'update available' push notification date
@@ -41,6 +50,7 @@ struct UpdateCheckerService {
               let relayUrl = URL(string: relayConfig.url)?.appendingPathComponent("meta") else {
             app.logger.info("Relay not configured. Server operating in standalone mode (supported).")
             app.storage[CompatibilityCacheKey.self] = .supported
+            app.storage[RelayProtocolSnapshotKey.self] = nil
             return
         }
 
@@ -58,6 +68,10 @@ struct UpdateCheckerService {
 
             // 4. Cache Result
             app.storage[CompatibilityCacheKey.self] = state
+            app.storage[RelayProtocolSnapshotKey.self] = RelayProtocolSnapshot(
+                current: meta.protocolVersion.current,
+                min: meta.protocolVersion.min
+            )
 
             app.logger.info("Compatibility check completed", metadata: [
                 "relay": .string(relayUrl.absoluteString),
@@ -114,6 +128,11 @@ struct UpdateCheckerService {
     /// Returns the current cached compatibility state (or .unreachable if check never ran)
     func getCurrentState() -> CompatibilityState {
         return app.storage[CompatibilityCacheKey.self] ?? .unreachable
+    }
+
+    /// Returns the last valid Relay protocol snapshot cached after a successful check.
+    func getCachedRelayProtocolSnapshot() -> RelayProtocolSnapshot? {
+        app.storage[RelayProtocolSnapshotKey.self]
     }
     
     // MARK: - Private Helpers

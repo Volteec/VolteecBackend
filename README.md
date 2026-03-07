@@ -439,6 +439,25 @@ Note: `POST /v1/status/simulate-push` is available only when `ENVIRONMENT != pro
 
 Note: API responses currently expose the minimal fields (battery/runtime/load/input/output). Extended NUT fields are stored in the DB for future expansion.
 
+`GET /v1/status` returns:
+
+```json
+{
+  "version": "1.0.7",
+  "protocolVersion": "1.1",
+  "compatibility": "supported",
+  "relayCurrentProtocolVersion": "1.1",
+  "relayMinProtocolVersion": "1.0"
+}
+```
+
+Notes:
+- `version` identifies the backend software release.
+- `protocolVersion` identifies the protocol contract implemented by the backend.
+- `compatibility` is the backend's derived verdict against the last valid Relay metadata snapshot.
+- `relayCurrentProtocolVersion` and `relayMinProtocolVersion` are optional observability fields populated from the last successful Relay compatibility check.
+- If no valid Relay snapshot is cached yet, the optional Relay fields are omitted from the payload.
+
 ## Configuration
 
 ### Core (required)
@@ -467,6 +486,12 @@ Default target:
 
 ### Backend versioning
 Backend version strings are set at build time (not via `.env`).
+
+- Source of truth for a public release is the Git tag `vX.Y.Z`.
+- The publish workflow strips the leading `v` and injects that value as `BACKEND_SOFTWARE_VERSION`.
+- The published Docker image tag and the runtime `version` exposed by `GET /v1/status` must match that injected release version.
+- `Sources/VolteecBackend/BuildInfo.swift` inside the repo is `local/dev fallback only`; it is not the source of truth for a public release.
+- `protocolVersion` is a separate compatibility contract version and is not the same thing as `softwareVersion`.
 
 ### NUT (optional; enables polling)
 Required:
