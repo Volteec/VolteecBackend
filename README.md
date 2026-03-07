@@ -1,6 +1,6 @@
 # Volteec Backend
 
-**v1.0.7 (2026-02-23)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
+**v1.1.0 (2026-03-07)** — Swift 6.2 / Vapor 4.121.1 — V1 local backend with NUT polling
 
 Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical backend document and Task-DevOps-003.
 
@@ -8,11 +8,18 @@ Local, self-hosted backend for UPS monitoring (NUT). Aligned to the canonical ba
 
 ## Status
 
-Current version: v1.0.7 (2026-02-23) — Swift 6.2 / Vapor 4.121.1.  
-Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration.  
+Current version: v1.1.0 (2026-03-07) — Swift 6.2 / Vapor 4.121.1.  
+Current content: auth middleware, rate limiting, Postgres models/migrations (ups/devices + NUT fields), REST endpoints, SSE stream, NUT TCP polling with canonical mapping, Relay integration, additive backend compatibility metadata, hosted verify plus self-hosted release publishing.  
 Planned content: SNMP polling (deferred).
 
 ### Patch History
+
+**v1.1.0 (2026-03-07) — backend compatibility metadata + CI/CD release separation**  
+- Status API: extend `GET /v1/status` additively with cached Relay protocol snapshot fields for backend observability.  
+- Compatibility service: cache the last valid Relay `current` and `min` protocol values and clear stale snapshot data in standalone mode.  
+- Build/release clarity: document `BuildInfo.swift` as local/dev fallback only and align release identity to `git tag -> build args -> runtime version -> image tag`.  
+- CI/CD: keep `smoke-compose` on GitHub-hosted verify and limit GHCR publish to `v*` tags and `workflow_dispatch` on self-hosted `macOS` + `ARM64`.  
+- Dependencies: pin `VolteecShared` to `from: 1.1.0` for the additive status model update.  
 
 **v1.0.7 (2026-02-23) — Docker Compose reliability hardening (db restart + healthcheck)**  
 - Docker Compose: add `restart: unless-stopped` to `app` and `db` to ensure clean boot after reboot.  
@@ -87,7 +94,7 @@ This backend runs locally/self-hosted and is intended for single-instance deploy
 4) Start backend:
    - `docker compose up app`
 
-This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:v1.0.7`) by default.
+This uses the **public GHCR image** (`ghcr.io/volteec/volteec-backend:v1.1.0`) by default.
 
 ### Release Readiness (Public Image)
 
@@ -96,7 +103,7 @@ Use the public image flow only when the release image is confirmed available.
 Preflight checks before running public commands:
 - Check GitHub Actions for the release tag: `.github/workflows/docker-publish.yml` must be `success`.
 - Confirm GHCR manifest exists for the tag:
-  - `docker manifest inspect ghcr.io/volteec/volteec-backend:v1.0.7 >/dev/null`
+  - `docker manifest inspect ghcr.io/volteec/volteec-backend:v1.1.0 >/dev/null`
   - If this fails with `manifest ... not found`, the image is not yet available.
 - Release publishing is triggered only by:
   - Git tags matching `v*`
@@ -383,7 +390,7 @@ Optional: stop SSH tunnel (if used for NUT):
 
 Optional: remove images:
 ```bash
-docker image rm ghcr.io/volteec/volteec-backend:v1.0.7
+docker image rm ghcr.io/volteec/volteec-backend:v1.1.0
 ```
 
 Optional (aggressive, global): prune Docker resources:
@@ -447,7 +454,7 @@ Note: API responses currently expose the minimal fields (battery/runtime/load/in
 
 ```json
 {
-  "version": "1.0.7",
+  "version": "1.1.0",
   "protocolVersion": "1.1",
   "compatibility": "supported",
   "relayCurrentProtocolVersion": "1.1",
@@ -555,7 +562,7 @@ Sources/VolteecBackend/
 
 ## Version
 
-- **Current**: v1.0.7 (2026-02-23)
+- **Current**: v1.1.0 (2026-03-07)
 - **Platform**: Linux (Docker)
 - **Swift**: 6.2
 - **Vapor**: 4.121.1
@@ -570,7 +577,7 @@ GitHub Actions workflows are configured:
   - Security posture: not used for `pull_request` or normal `push` verification in this public repo
 
 ## Compatibility
-- VolteecShared version is pinned in `Package.swift` (`from: 1.0.2`).
+- VolteecShared version is pinned in `Package.swift` (`from: 1.1.0`).
 - API versioning is `/v1/*` with response `apiVersion = "1.0"`.
 
 ## Support & Contact
