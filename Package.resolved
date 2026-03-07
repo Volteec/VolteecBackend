@@ -1,5 +1,5 @@
 {
-  "originHash" : "4dd51af65c8b2d9dae14faab1c81617cc729ca02951817680417e9f97701f0c8",
+  "originHash" : "4fab1a8e7d3121c1571718ee4c4d8cc87ad32f81dd22ebabf05d10c577c316d0",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -303,8 +303,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Volteec/VolteecShared.git",
       "state" : {
-        "revision" : "f999e8c97bd3e522ad3debf8a56adaa136262adb",
-        "version" : "1.0.2"
+        "revision" : "37e0e59403baa11a4df5e511f0381d44774ee9e4",
+        "version" : "1.1.0"
       }
     },
     {
